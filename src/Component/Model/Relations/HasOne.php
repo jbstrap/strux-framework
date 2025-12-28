@@ -1,0 +1,62 @@
+<?php
+
+namespace Strux\Component\Model\Relations;
+
+use InvalidArgumentException;
+use Strux\Component\Model\Model;
+use Strux\Support\Collection;
+
+class HasOne extends Relation
+{
+    protected string $foreignKey;
+    protected string $localKey;
+
+    public function __construct(Model $related, Model $parent, string $foreignKey, string $localKey)
+    {
+        $this->foreignKey = $foreignKey;
+        $this->localKey = $localKey;
+
+        parent::__construct($related, $parent);
+
+        // Ensure the related model is set up correctly
+        if (!$related->getTable()) {
+            throw new InvalidArgumentException('Related model must have a table defined.');
+        }
+    }
+
+    /**
+     * Get the result for a lazy-loaded relationship.
+     */
+    public function getResults(): ?Model
+    {
+        return $this->getQuery()
+            ->where($this->foreignKey, $this->parent->{$this->localKey})
+            ->first();
+    }
+
+    /**
+     * Add constraints for an eager-loaded relationship.
+     */
+    public function addEagerConstraints(array $models): void
+    {
+        $keys = array_map(fn($model) => $model->{$this->localKey}, $models);
+        $this->getQuery()->whereIn($this->foreignKey, array_unique($keys));
+    }
+
+    /**
+     * Match the eager-loaded results back to their parents.
+     */
+    public function match(array $models, Collection $results, string $relation): array
+    {
+        $dictionary = [];
+        foreach ($results as $result) {
+            $dictionary[$result->{$this->foreignKey}] = $result;
+        }
+
+        foreach ($models as $model) {
+            $key = $model->{$this->localKey};
+            $model->setRelation($relation, $dictionary[$key] ?? null);
+        }
+        return $models;
+    }
+}
