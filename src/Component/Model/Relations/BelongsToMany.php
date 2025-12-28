@@ -38,7 +38,6 @@ class BelongsToMany extends Relation
 
         parent::__construct($related, $parent);
 
-        // Ensure the related model is set up correctly
         if (!$related->getTable()) {
             throw new InvalidArgumentException('Related model must have a table defined.');
         }

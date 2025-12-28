@@ -20,7 +20,6 @@ class HasMany extends Relation
 
         parent::__construct($related, $parent);
 
-        // Ensure the related model is set up correctly
         if (!$related->getTable()) {
             throw new InvalidArgumentException('Related model must have a table defined.');
         }
@@ -28,8 +27,14 @@ class HasMany extends Relation
 
     public function getResults(): Collection
     {
+        $localKey = $this->parent->{$this->localKey};
+
+        if (empty($localKey)) {
+            return new Collection([]);
+        }
+
         return $this->getQuery()
-            ->where($this->foreignKey, $this->parent->{$this->localKey})
+            ->where($this->foreignKey, $localKey)
             ->get();
     }
 
@@ -51,5 +56,47 @@ class HasMany extends Relation
             $model->setRelation($relation, new Collection($dictionary[$key] ?? []));
         }
         return $models;
+    }
+
+    /**
+     * Create a new instance of the related model.
+     * * @param array $attributes
+     * @return Model
+     */
+    public function create(array $attributes): Model
+    {
+        $instance = new $this->relatedModel($attributes);
+
+        $instance->{$this->foreignKey} = $this->parent->{$this->localKey};
+
+        $instance->save();
+
+        return $instance;
+    }
+
+    /**
+     * Create multiple instances of the related model.
+     * * @param array $records Array of attributes
+     * @return array Array of created Models
+     */
+    public function createMany(array $records): array
+    {
+        $instances = [];
+        foreach ($records as $attributes) {
+            $instances[] = $this->create($attributes);
+        }
+        return $instances;
+    }
+
+    /**
+     * Save a related model instance.
+     * * @param Model $model
+     * @return Model
+     */
+    public function save(Model $model): Model
+    {
+        $model->{$this->foreignKey} = $this->parent->{$this->localKey};
+        $model->save();
+        return $model;
     }
 }

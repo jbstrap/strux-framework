@@ -28,6 +28,26 @@ trait HasRelationships
     private array $_relations = [];
     private array $_with = [];
 
+    /**
+     * Magic method to handle dynamic relationship method calls.
+     * Allows $model->someMethod() to return the Relation object if the property $someMethod exists with a RelationAttribute.
+     */
+    public function __call(string $method, array $arguments)
+    {
+        if (property_exists($this, $method)) {
+            $reflection = new ReflectionClass($this);
+            $property = $reflection->getProperty($method);
+
+            $attributes = $property->getAttributes(RelationAttribute::class, ReflectionAttribute::IS_INSTANCEOF);
+
+            if (!empty($attributes)) {
+                return $this->initializeRelationFromAttribute($attributes[0]);
+            }
+        }
+
+        throw new RuntimeException("Relation method '$method' does not exist on " . static::class);
+    }
+
     public function with(string ...$relations): static
     {
         $builder = $this->_getQueryBuilderInstance();
