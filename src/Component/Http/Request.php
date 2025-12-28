@@ -19,7 +19,13 @@ class Request
 {
     use SanitizesData;
 
+    /**
+     * @var ServerRequestInterface
+     */
     private ServerRequestInterface $request;
+    /**
+     * @var SafeInput|null
+     */
     private ?SafeInput $safeInstance = null;
 
     /**
@@ -275,7 +281,6 @@ class Request
             return empty($uploadedFiles) ? null : $uploadedFiles;
         }
 
-        // Handle single file
         if ($fileData instanceof UploadedFileInterface) {
             return new UploadedFile($fileData);
         }
@@ -357,31 +362,37 @@ class Request
         return strtoupper($this->request->getMethod()) === strtoupper($method);
     }
 
+    /**
+     * @return string
+     */
     public function path(): string
     {
         return ltrim($this->request->getUri()->getPath(), '/');
     }
 
+    /**
+     * @param string $pattern
+     * @return bool
+     */
     public function isPath(string $pattern): bool
     {
         $path = $this->path();
         // Ensure the pattern is also trimmed if it might contain slashes
         $normalizedPattern = trim($pattern, '/');
-        // Simple wildcard: * matches any characters except /
-        // For more complex routing, a dedicated routing library with more robust pattern matching is better.
         $regexPattern = str_replace('*', '[^/]*', $normalizedPattern);
         return (bool)preg_match("#^$regexPattern$#i", $path);
     }
 
+    /**
+     * @return object|mixed|null
+     */
     public function getJson(): ?object
     {
         $parsedBody = $this->request->getParsedBody();
         if (is_object($parsedBody)) {
-            return $parsedBody; // Assumes body parsing middleware already handled JSON
+            return $parsedBody;
         }
 
-        // Fallback: if body is a string and looks like JSON,
-        // This is less ideal as the body stream should ideally be parsed once.
         $body = $this->request->getBody();
         if (!$body->isReadable()) {
             return null;
@@ -389,7 +400,7 @@ class Request
 
         $contents = $body->getContents();
         if ($body->isSeekable()) {
-            $body->rewind(); // Rewind if possible, for subsequent reads
+            $body->rewind();
         }
 
         if (empty($contents)) {
@@ -402,14 +413,12 @@ class Request
             return $jsonData;
         }
 
-        // Log error if desired
-        // error_log('JSON Decode Error in Request->getJson(): ' . json_last_error_msg());
+        error_log('JSON Decode Error in Request->getJson(): ' . json_last_error_msg());
         return null;
     }
 
     /**
      * Get the referring URL or fallback to the base URL
-     *
      * @return string
      */
     public function getRefer(): string
@@ -428,7 +437,6 @@ class Request
 
     /**
      * Alias for getRefer()
-     *
      * @return string
      */
     public function getReferrer(): string
@@ -438,7 +446,9 @@ class Request
 
     /**
      * Helper to cast a value to a specific type.
-     * Public so it can be used by SafeInput.
+     * @param mixed $value The value to cast.
+     * @param string $type The target type ('int', 'string', 'bool', 'float', 'array').
+     * @return mixed The casted value.
      */
     public function castValue(mixed $value, string $type): mixed
     {
@@ -459,7 +469,6 @@ class Request
      */
     private function findInArray(string $key, array $data, mixed $default = null): mixed
     {
-        // Optimization: check for direct key first
         if (array_key_exists($key, $data)) {
             return $data[$key];
         }

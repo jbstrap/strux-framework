@@ -4,7 +4,7 @@ Below is a clean, comprehensive **README.md** generated from the documentation y
 
 # Strux Framework
 
-Strux is a modern, lightweight, and powerful **PHP framework** designed for building robust web applications and APIs. It combines a clean architecture with a rich feature set—including an Active Record ORM, built-in queue system, event dispatcher, and flexible middleware—while maintaining a minimal core with **zero external dependencies**.
+Strux is a modern, lightweight, and powerful **PHP framework** designed for building robust web applications and APIs. It combines a clean architecture with a rich feature set—including an Active Record ORM, built-in queue system, event dispatcher, and flexible middleware—while maintaining a minimal core with **few external dependencies**.
 
 Strux strictly adheres to **PSR-1, PSR-2, PSR-3, PSR-4, and PSR-7** standards for maximum interoperability.
 
@@ -181,7 +181,9 @@ Middleware intercepts requests before controllers execute.
 ```php
 class AuthMiddleware implements MiddlewareInterface
 {
-    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+    public function process(
+        ServerRequestInterface $request, 
+        RequestHandlerInterface $handler): ResponseInterface
     {
         if (!Auth::check()) {
             return $this->responseFactory->createResponse(302)

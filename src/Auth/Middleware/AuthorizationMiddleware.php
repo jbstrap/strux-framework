@@ -58,7 +58,9 @@ class AuthorizationMiddleware implements MiddlewareInterface
      * @throws ReflectionException
      * @throws AuthorizationException
      */
-    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+    public function process(
+        ServerRequestInterface $request,
+        RequestHandlerInterface $handler): ResponseInterface
     {
         if ($this->authManager->sentinel('web')->check()) {
             $userId = $this->authManager->sentinel('web')->id();
