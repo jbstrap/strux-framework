@@ -19,8 +19,10 @@ use ReflectionMethod;
 use Strux\Auth\Auth;
 use Strux\Auth\AuthManager;
 use Strux\Component\Attributes\Authorize;
+use Strux\Component\Config\Config;
 use Strux\Component\Exceptions\AuthorizationException;
 use Strux\Component\Routing\Router;
+use Strux\Support\ContainerBridge;
 use Strux\Support\Helpers\FlashServiceInterface;
 
 class AuthorizationMiddleware implements MiddlewareInterface
@@ -37,7 +39,8 @@ class AuthorizationMiddleware implements MiddlewareInterface
         ResponseFactoryInterface $responseFactory,
         Router                   $router,
         FlashServiceInterface    $flash,
-        string                   $loginRouteName = 'auth.login',
+        ?string                   $loginRouteName = null,
+        ?string                   $nextParameter = null,
         ?LoggerInterface         $logger = null
     )
     {
@@ -46,6 +49,7 @@ class AuthorizationMiddleware implements MiddlewareInterface
         $this->router = $router;
         $this->flash = $flash;
         $this->loginRouteName = $loginRouteName;
+        $this->nextParameter = $nextParameter;
         $this->logger = $logger;
     }
 
@@ -56,9 +60,7 @@ class AuthorizationMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        // Use the AuthManager to get the 'api' sentinel and check the user
         if ($this->authManager->sentinel('web')->check()) {
-            // User is authenticated via token, proceed with the request.
             $userId = $this->authManager->sentinel('web')->id();
             $this->logger?->info("[AuthManagerMiddleware] User with ID {$userId} is authenticated. Proceeding.");
             $routeInfo = $request->getAttribute('route');
@@ -67,12 +69,9 @@ class AuthorizationMiddleware implements MiddlewareInterface
             $method = $routeInfo['method'] ?? null;
 
             if ($controller && $method) {
-                // 1. Check Class Level Attributes
-                // Handle case where controller is an object (instantiated) or string (class name)
                 $reflectionClass = new ReflectionClass($controller);
                 $this->checkAuthorization($reflectionClass);
 
-                // 2. Check Method Level Attributes
                 if ($reflectionClass->hasMethod($method)) {
                     $this->checkAuthorization($reflectionClass->getMethod($method));
                 }
@@ -83,7 +82,6 @@ class AuthorizationMiddleware implements MiddlewareInterface
         $this->logger?->info("[AuthorizationMiddleware] User is not authenticated. Redirecting to login.");
 
         if ($request->getHeaderLine('Accept') === 'application/json') {
-            // If the request expects JSON, return a 401 Unauthorized response
             $this->logger?->info("[AuthorizationMiddleware] Returning 401 Unauthorized for JSON request.");
             $response = $this->responseFactory->createResponse(401);
             $response->getBody()->write(json_encode([
@@ -96,24 +94,46 @@ class AuthorizationMiddleware implements MiddlewareInterface
             return $response->withHeader('Content-Type', 'application/json');
         }
 
-        // User is not authenticated, set flash message
         $this->flash->set('error', 'You must be logged in to access this page.');
 
-        // Redirect to the login page
+        /** @var Config $config  */
+        $config = ContainerBridge::resolve(Config::class);
+
+        $this->loginRouteName = $this->loginRouteName
+            ?? $config->get('auth.defaults.redirect_to', 'login');
+
+        $this->nextParameter = $this->nextParameter
+            ?? $config->get('auth.defaults.next_parameter', 'next');
+
         try {
-            // Ensure your router's route() method can generate URLs by name.
-            // If not, you might need to construct the URL path directly.
-            $loginUrl = $this->router->route(
-                $this->loginRouteName,
-                ['next' => $request->getUri()->getPath()]
-            );
+            $currentPath = (!empty($request->getUri()->getPath()) && $request->getUri()->getPath() !== '/')
+                ? $request->getUri()->getPath()
+                : '' ;
+
+            if (str_starts_with($this->loginRouteName, '/')) {
+                if (!empty($currentPath)) {
+                    $loginUrl = $this->loginRouteName . '?' . http_build_query([
+                            $this->nextParameter => $currentPath
+                        ]);
+                } else {
+                    $loginUrl = $this->loginRouteName;
+                }
+            } else {
+                if (!empty($currentPath)) {
+                    $loginUrl = $this->router->route(
+                        $this->loginRouteName,
+                        [$this->nextParameter => $currentPath]
+                    );
+                } else {
+                    $loginUrl = $this->router->route($this->loginRouteName);
+                }
+            }
         } catch (InvalidArgumentException $e) {
             $this->logger?->error(
                 "[AuthorizationMiddleware] CRITICAL: Login route '$this->loginRouteName' not found or URL generation failed.",
                 ['exception_message' => $e->getMessage()]
             );
-            // Fallback to a hardcoded path if route generation fails
-            $loginUrl = '/login'; // Adjust this fallback as necessary
+            $loginUrl = '/login';
         }
 
         $this->logger?->info("[AuthorizationMiddleware] Redirecting to: $loginUrl");
