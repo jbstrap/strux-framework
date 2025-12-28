@@ -1,7 +1,3 @@
-Below is a clean, comprehensive **README.md** generated from the documentation you provided. It’s structured for public repositories and developer onboarding, and follows common open-source conventions.
-
----
-
 # Strux Framework
 
 Strux is a modern, lightweight, and powerful **PHP framework** designed for building robust web applications and APIs. It combines a clean architecture with a rich feature set—including an Active Record ORM, built-in queue system, event dispatcher, and flexible middleware—while maintaining a minimal core with **few external dependencies**.
