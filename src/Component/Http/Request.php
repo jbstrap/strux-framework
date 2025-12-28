@@ -168,6 +168,29 @@ class Request
     }
 
     /**
+     * Get all headers.
+     */
+    public function headers(): array
+    {
+        return $this->request->getHeaders();
+    }
+
+    /**
+     * Get a specific header value by name.
+     * Returns null if the header is not present.
+     * If multiple values exist, returns an array of values.
+     */
+    public function header(string $name): array|string|null
+    {
+        $headerLine = $this->request->getHeaderLine($name);
+        if ($headerLine === '') {
+            return null;
+        }
+        $headerValues = $this->request->getHeader($name);
+        return count($headerValues) === 1 ? $headerValues[0] : $headerValues;
+    }
+
+    /**
      * Get all SANITIZED POST data.
      */
     public function safeAllPost(): array
