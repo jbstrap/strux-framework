@@ -6,12 +6,15 @@ namespace Strux\Component\Model\Behavior;
 
 use RuntimeException;
 use Strux\Component\Database\Expression;
-use Strux\Component\Exceptions\DatabaseException;
-use Strux\Support\Collection;
 use Strux\Component\Database\Paginator;
+use Strux\Component\Exceptions\DatabaseException;
+use Strux\Component\Model\Model;
+use Strux\Support\Collection;
 
 trait HasQueryBuilder
 {
+    use HasRelationships;
+
     private string $_queryAction = 'SELECT';
     private bool $_distinct = false;
     private array $_selects = [];
@@ -27,11 +30,11 @@ trait HasQueryBuilder
 
     public static function query(): static
     {
+        /** @var Model $instance */
         $instance = new static();
         $instance->_resetQueryState();
         $instance->_isQueryBuilderInstance = true;
 
-        // Re-apply global scopes logic from Model
         if (method_exists($instance, 'applyGlobalScopes')) {
             $instance->applyGlobalScopes($instance);
         }
@@ -356,6 +359,44 @@ trait HasQueryBuilder
     }
 
     /**
+     * Get the current SQL statement.
+     */
+    public function toSql(): string
+    {
+        return $this->_getQueryBuilderInstance()->_buildSelectSQL();
+    }
+
+    /**
+     * Get the current SQL statement with bindings interpolated (Approximation).
+     */
+    public function toRawSql(): string
+    {
+        $builder = $this->_getQueryBuilderInstance();
+        $sql = $builder->_buildSelectSQL();
+        $bindings = $builder->_bindings;
+
+        foreach ($bindings as $bind) {
+            if (is_string($bind)) {
+                $bind = "'" . addslashes($bind) . "'";
+            } elseif (is_null($bind)) {
+                $bind = 'NULL';
+            } elseif (is_bool($bind)) {
+                $bind = $bind ? '1' : '0';
+            } elseif ($bind instanceof \DateTimeInterface) {
+                $bind = "'" . $bind->format('Y-m-d H:i:s') . "'";
+            }
+
+            // Replace the first occurrence of '?' with the binding value
+            $pos = strpos($sql, '?');
+            if ($pos !== false) {
+                $sql = substr_replace($sql, (string)$bind, $pos, 1);
+            }
+        }
+
+        return $sql;
+    }
+
+    /**
      * Paginate the given query.
      *
      * @param int $perPage
@@ -380,25 +421,41 @@ trait HasQueryBuilder
         if ($page < 1) $page = 1;
 
         // 1. Get Total Count
-        // We clone to avoid modifying the current builder state for the count query
-        $countBuilder = clone $this->_getQueryBuilderInstance();
-        // Remove orders and limits for count
-        $countBuilder->_orders = [];
-        $countBuilder->_limit = null;
-        $countBuilder->_offset = null;
+        // Use a fresh instance and copy state manually to avoid clone issues and state pollution
+        $countBuilder = static::query();
+        $currentBuilder = $this->_getQueryBuilderInstance();
+
+        $countBuilder->_wheres = $currentBuilder->_wheres;
+        $countBuilder->_bindings = $currentBuilder->_bindings;
+        $countBuilder->_joins = $currentBuilder->_joins;
+        $countBuilder->_groups = $currentBuilder->_groups;
+        $countBuilder->_havings = $currentBuilder->_havings;
+        $countBuilder->_distinct = $currentBuilder->_distinct;
+
         $total = $countBuilder->count();
 
         // 2. Get Items for current page
-        $builder = $this->_getQueryBuilderInstance();
-        $builder->limit($perPage);
-        $builder->offset(($page - 1) * $perPage);
+        // Use a fresh builder to preserve the state of $currentBuilder (prevents reset)
+        $itemBuilder = static::query();
+        $itemBuilder->_wheres = $currentBuilder->_wheres;
+        $itemBuilder->_bindings = $currentBuilder->_bindings;
+        $itemBuilder->_joins = $currentBuilder->_joins;
+        $itemBuilder->_groups = $currentBuilder->_groups;
+        $itemBuilder->_havings = $currentBuilder->_havings;
+        $itemBuilder->_orders = $currentBuilder->_orders;
+        $itemBuilder->_selects = $currentBuilder->_selects;
+        $itemBuilder->_distinct = $currentBuilder->_distinct;
+        $itemBuilder->_with = $currentBuilder->_with;
 
-        // Pass columns if specified
+        $itemBuilder->limit($perPage);
+        $itemBuilder->offset(($page - 1) * $perPage);
+
         if ($columns !== ['*']) {
-            $builder->select($columns);
+            $itemBuilder->select($columns);
         }
 
-        $results = $builder->get();
+        // Executing get() on $itemBuilder resets $itemBuilder, but $currentBuilder remains untouched
+        $results = $itemBuilder->get();
 
         // 3. Return Paginator
         return new Paginator(
@@ -459,6 +516,7 @@ trait HasQueryBuilder
 
         if ($this->_limit !== null) $sql .= " LIMIT $this->_limit";
         if ($this->_offset !== null) $sql .= " OFFSET $this->_offset";
+        // dump($sql, $this->_bindings);
 
         return $sql;
     }
