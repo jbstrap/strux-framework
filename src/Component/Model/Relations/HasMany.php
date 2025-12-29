@@ -65,7 +65,7 @@ class HasMany extends Relation
      */
     public function create(array $attributes): Model
     {
-        $instance = new $this->relatedModel($attributes);
+        $instance = new $this->related($attributes);
 
         $instance->{$this->foreignKey} = $this->parent->{$this->localKey};
 

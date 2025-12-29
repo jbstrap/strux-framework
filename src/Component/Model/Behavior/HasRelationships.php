@@ -31,6 +31,7 @@ trait HasRelationships
     /**
      * Magic method to handle dynamic relationship method calls.
      * Allows $model->someMethod() to return the Relation object if the property $someMethod exists with a RelationAttribute.
+     * @throws ReflectionException
      */
     public function __call(string $method, array $arguments)
     {

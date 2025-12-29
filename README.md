@@ -157,6 +157,7 @@ class PageController extends Controller
 
 ```php
 $request->input('name');
+$request->safe()->input('name'); // Sanitized
 $request->query('page');
 $request->header('User-Agent');
 $request->file('avatar');

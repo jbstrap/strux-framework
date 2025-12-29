@@ -1,4 +1,5 @@
-Below is a clean, structured **README.md** generated from your Strux Framework Controller documentation. It’s written in Markdown and ready to drop into a repository.
+Below is a clean, structured **README.md** generated from your Strux Framework Controller documentation. It’s written in
+Markdown and ready to drop into a repository.
 
 ---
 
@@ -6,9 +7,11 @@ Below is a clean, structured **README.md** generated from your Strux Framework C
 
 ## Introduction
 
-Strux controllers handle incoming HTTP requests and return responses. They act as the glue between **routes**, **models**, and **views**, providing a clean and expressive way to build web and API applications using modern PHP features.
+Strux controllers handle incoming HTTP requests and return responses. They act as the glue between **routes**, **models
+**, and **views**, providing a clean and expressive way to build web and API applications using modern PHP features.
 
-The framework leverages **PHP 8 Attributes**, **dependency injection**, and **response helpers** to keep controllers concise and readable.
+The framework leverages **PHP 8 Attributes**, **dependency injection**, and **response helpers** to keep controllers
+concise and readable.
 
 ---
 
@@ -230,7 +233,7 @@ use Strux\Component\Http\Request;
 #[Route('/submit', methods: ['POST'])]
 public function store(Request $request): Response
 {
-    $name = $request->input('name');
+    $name = $request->safe()->input('name');
     $email = $request->input('email');
 
     return $this->redirect('/success');

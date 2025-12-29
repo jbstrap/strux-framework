@@ -268,13 +268,6 @@ $user->roles()->get();
 
 ---
 
-## License
-
-This framework is currently **custom / proprietary**.
-Add a license file if you plan to open-source or distribute it.
-
----
-
 **Strux** provides a strong, modern foundation for building PHP applications with minimal boilerplate and maximum
 clarity.
 
