@@ -1,8 +1,3 @@
-Below is a clean, structured **README.md** generated from your Strux Framework Controller documentation. It’s written in
-Markdown and ready to drop into a repository.
-
----
-
 # Strux Framework – Controller Documentation
 
 ## Introduction
