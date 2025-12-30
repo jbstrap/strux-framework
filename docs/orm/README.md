@@ -1,8 +1,3 @@
-Below is a polished **README.md** generated from the content you provided, structured, clarified, and formatted for
-direct use in your repository.
-
----
-
 # Strux ORM
 
 **Strux ORM** is a modern, lightweight **Active Record Object-Relational Mapper (ORM)** for **PHP 8.1+**, designed
