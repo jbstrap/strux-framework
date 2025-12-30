@@ -34,7 +34,6 @@ trait HasAttributes
             $map = [];
             foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $prop) {
                 if (!$prop->isStatic() && !$prop->isProtected()) {
-                    // Skip Relations
                     if (!empty($prop->getAttributes(RelationAttribute::class, ReflectionAttribute::IS_INSTANCEOF))) {
                         continue;
                     }
@@ -42,7 +41,6 @@ trait HasAttributes
                     $type = $prop->getType() instanceof ReflectionNamedType ? $prop->getType()->getName() : null;
                     $propName = $prop->getName();
 
-                    // Check for Column Attribute alias
                     $colAttr = $prop->getAttributes(Column::class);
                     $dbName = $propName;
                     if (!empty($colAttr)) {
@@ -148,12 +146,11 @@ trait HasAttributes
         if (!empty($attributes)) {
             return $attributes[0]->newInstance()->column;
         }
-        return 'deleted_at'; // Fallback default
+        return 'deleted_at';
     }
 
     public function toArray(): array
     {
-        // If this instance is actually a query builder wrapper
         if (isset($this->_isQueryBuilderInstance) && $this->_isQueryBuilderInstance) {
             $collection = $this->get();
             return array_map(fn($item) => $item->toArray(), $collection->all());

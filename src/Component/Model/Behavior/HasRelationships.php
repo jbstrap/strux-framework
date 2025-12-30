@@ -9,6 +9,7 @@ use ReflectionClass;
 use ReflectionException;
 use ReflectionProperty;
 use RuntimeException;
+use Strux\Component\Database\Attributes\Table;
 use Strux\Component\Model\Attributes\BelongsTo as BelongsToAttr;
 use Strux\Component\Model\Attributes\BelongsToMany as BelongsToManyAttr;
 use Strux\Component\Model\Attributes\HasMany as HasManyAttr;
@@ -180,6 +181,16 @@ trait HasRelationships
         /** @var Model $relatedInstance */
         $relatedInstance = new $relatedModel();
 
+        // 1. Resolve Pivot Table Name if it's a Class
+        if ($pivotTable && class_exists($pivotTable)) {
+            $pivotReflection = new ReflectionClass($pivotTable);
+            $tableAttr = $pivotReflection->getAttributes(Table::class)[0] ?? null;
+            if ($tableAttr) {
+                $pivotTable = $tableAttr->newInstance()->name;
+            }
+        }
+
+        // 2. Default Pivot Table Logic
         if ($pivotTable === null) {
             $models = [
                 $this->getTable() ?? Utils::getPluralName($this->reflection()->getShortName()),
@@ -188,9 +199,10 @@ trait HasRelationships
             sort($models);
             $pivotTable = implode('_', $models);
         }
+
         $foreignPivotKey = $foreignPivotKey ?? $this->getPrimaryKey() ?? strtolower($this->reflection()->getShortName()) . '_' . $this->getPrimaryKey();
         $relatedPivotKey = $relatedPivotKey ?? $relatedInstance->getPrimaryKey() ?? strtolower($relatedInstance->reflection()->getShortName()) . '_' . $relatedInstance->getPrimaryKey();
-        //dump($pivotTable, $foreignPivotKey, $relatedPivotKey);
+
         return new BelongsToMany($relatedInstance, $this, $pivotTable, $foreignPivotKey, $relatedPivotKey, $this->getPrimaryKey(), $relatedInstance->getPrimaryKey());
     }
 }

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Strux\Component\Model;
 
+use Closure;
 use PDO;
 use PDOException;
 use PDOStatement;
 use ReflectionClass;
+use ReflectionException;
 use ReflectionProperty;
 use RuntimeException;
 use Strux\Component\Database\Attributes\Id;
@@ -33,24 +35,32 @@ abstract class Model
     private static array $globalScopes = [];
     private array $removedScopes = [];
 
+    /**
+     * @throws ReflectionException
+     */
     public function __construct(array $attributes = [])
     {
-        try {
-            $this->db = ContainerBridge::resolve(PDO::class);
-        } catch (Throwable $e) {
-            error_log("Model Constructor: Failed to resolve PDO: " . $e->getMessage());
-        }
+        $this->resolveConnection();
 
         $this->bootTraits();
 
         $this->fill($attributes);
 
         $pk = $this->getPrimaryKey();
-        if (!empty($attributes) && isset($attributes[$pk]) && $attributes[$pk] !== null) {
+        if (!empty($attributes) && isset($attributes[$pk])) {
             $this->_exists = true;
             $this->_original = $attributes;
         }
         $this->_isQueryBuilderInstance = false;
+    }
+
+    private function resolveConnection(): void
+    {
+        try {
+            $this->db = ContainerBridge::resolve(PDO::class);
+        } catch (Throwable $e) {
+            error_log("Model Constructor: Failed to resolve PDO: " . $e->getMessage());
+        }
     }
 
     protected function bootTraits(): void
@@ -64,18 +74,53 @@ abstract class Model
         }
     }
 
+    /**
+     * Create a new record and save it to the database.
+     */
     public static function create(array $attributes = []): static
     {
         $instance = new static();
-        $instance->fill($attributes);
+        try {
+            $instance->fill($attributes);
+        } catch (ReflectionException $e) {
+            throw new RuntimeException("Failed to create model: " . $e->getMessage(), 0, $e);
+        }
         $instance->save();
+        return $instance;
+    }
+
+    /**
+     * Update a record by its primary key.
+     * * @param mixed $id The primary key value
+     * @param array $attributes The attributes to update
+     * @return static|null The updated model instance or null if not found
+     */
+    public static function update(mixed $id, array $attributes): ?static
+    {
+        $instance = static::find($id);
+
+        if (!$instance) {
+            return null;
+        }
+
+        try {
+            $instance->fill($attributes);
+        } catch (ReflectionException $e) {
+            throw new RuntimeException("Failed to update model: " . $e->getMessage(), 0, $e);
+        }
+        $instance->save();
+
         return $instance;
     }
 
     public static function fromStorage(array $data): static
     {
         $instance = new static();
-        $instance->fill($data);
+        try {
+            $instance->fill($data);
+        } catch (ReflectionException $e) {
+            throw new RuntimeException("Failed to instantiate model from storage: " . $e->getMessage(), 0, $e);
+        }
         $instance->_exists = true;
         $instance->_original = $data;
         $instance->_isQueryBuilderInstance = false;
@@ -278,6 +323,71 @@ abstract class Model
         return $stmt->rowCount();
     }
 
+    // --- Transaction Management ---
+
+    /**
+     * Execute a Closure within a database transaction.
+     *
+     * @param Closure $callback
+     * @return mixed
+     * @throws Throwable
+     */
+    public static function transaction(Closure $callback): mixed
+    {
+        static::beginTransaction();
+
+        try {
+            $result = $callback();
+            static::commit();
+            return $result;
+        } catch (Throwable $e) {
+            static::rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Start a new database transaction.
+     */
+    public static function beginTransaction(): void
+    {
+        /* @var PDO $pdo */
+        $pdo = ContainerBridge::resolve(PDO::class);
+        if ($pdo->inTransaction()) {
+            return;
+        }
+        $pdo->beginTransaction();
+    }
+
+    /**
+     * Commit the active database transaction.
+     */
+    public static function commit(): void
+    {
+        /* @var PDO $pdo */
+        $pdo = ContainerBridge::resolve(PDO::class);
+        if ($pdo->inTransaction()) {
+            $pdo->commit();
+        }
+    }
+
+    /**
+     * Rollback the active database transaction.
+     */
+    public static function rollBack(): void
+    {
+        /* @var PDO $pdo */
+        $pdo = ContainerBridge::resolve(PDO::class);
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+    }
+
+    public function getLastInsertId(?string $name = null): string|false
+    {
+        return $this->db->lastInsertId($name);
+    }
+
     public function __sleep(): array
     {
         $properties = (new ReflectionClass($this))->getProperties();
@@ -295,35 +405,10 @@ abstract class Model
      */
     public function __wakeup(): void
     {
-        if (function_exists('container')) {
-            try {
-                $this->db = container(PDO::class);
-            } catch (Throwable $e) {
-                throw new DatabaseException("Failed to re-establish PDO connection on model wakeup: " . $e->getMessage());
-            }
+        try {
+            $this->db = ContainerBridge::resolve(PDO::class);
+        } catch (Throwable $e) {
+            throw new DatabaseException("Failed to re-establish PDO connection on model wakeup: " . $e->getMessage());
         }
-    }
-
-    public function getLastInsertId(?string $name = null): string|false
-    {
-        return $this->db->lastInsertId($name);
-    }
-
-    public function beginTransaction(): bool
-    {
-        if ($this->db->inTransaction()) {
-            return true;
-        }
-        return $this->db->beginTransaction();
-    }
-
-    public function commit(): bool
-    {
-        return $this->db->commit();
-    }
-
-    public function rollback(): bool
-    {
-        return $this->db->rollBack();
     }
 }

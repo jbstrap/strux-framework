@@ -86,8 +86,8 @@ class Blueprint
 
                 $propName = $property->getName();
                 $defaultFk = $propName;
-                if (!str_ends_with($propName, 'ID') && !str_ends_with($propName, 'Id')) {
-                    $defaultFk = $propName . 'ID';
+                if (!str_ends_with($propName, 'ID') && !str_ends_with($propName, 'Id') && !str_ends_with($propName, 'id')) {
+                    $defaultFk = $propName . '_id';
                 }
 
                 $foreignKeyColumn = $instance->foreignKey ?? $defaultFk;
@@ -118,6 +118,7 @@ class Blueprint
                         }
 
                         $sql[$constraintName] = sprintf(
+                        /** @lang text */
                             "ALTER TABLE `%s` ADD CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s` (`%s`) ON DELETE %s ON UPDATE %s",
                             $tableName,
                             $constraintName,
@@ -168,15 +169,27 @@ class Blueprint
             $relatedTable = $relatedTableAttr ? $relatedTableAttr->newInstance()->name : null;
 
             // --- PIVOT TABLE NAME LOGIC ---
-            $pivotTable = $instance->pivotTable;
+            $pivotTableInput = $instance->pivotTable;
+            $pivotTable = null;
+            $isExplicitModel = false;
+
+            if ($pivotTableInput) {
+                // Check if the input is a class that exists
+                if (class_exists($pivotTableInput)) {
+                    $pivotReflection = new ReflectionClass($pivotTableInput);
+                    $pivotTableAttr = $pivotReflection->getAttributes(Table::class)[0] ?? null;
+                    if ($pivotTableAttr) {
+                        $pivotTable = $pivotTableAttr->newInstance()->name;
+                        $isExplicitModel = true;
+                    }
+                } else {
+                    // It's just a string name
+                    $pivotTable = $pivotTableInput;
+                }
+            }
+
             if (!$pivotTable) {
                 // Default convention: alphabetical order of singular model names (or table names)
-                // Let's use Table Names to be safer if provided, but typically convention is singular.
-                // Assuming standard Laravel-style: role_user (singular)
-                // But you requested it to respect Table attributes if possible or be customizable.
-
-                // Let's stick to your convention in HasRelationships: shortName based.
-                // But to be modular as requested:
                 $models = [
                     $currentTable ?? Utils::getPluralName($reflection->getShortName()),
                     $relatedTable ?? Utils::getPluralName($relatedReflection->getShortName())
@@ -185,8 +198,29 @@ class Blueprint
                 $pivotTable = implode('_', $models);
             }
 
-            $foreignPivotKey = $instance->foreignPivotKey ?? lcfirst($reflection->getShortName()) . 'ID';
-            $relatedPivotKey = $instance->relatedPivotKey ?? lcfirst($relatedReflection->getShortName()) . 'ID';
+            // If the pivot table is defined via an explicit Model class, we SKIP generating the CREATE TABLE here.
+            // The standard ModelBuilder loop in MigrationGenerator will handle creating the table
+            // based on that Model's properties.
+            if ($isExplicitModel) {
+                continue;
+            }
+
+            // --- RESOLVE PIVOT KEYS ---
+            // Priority:
+            // 1. Explicitly defined in attribute (foreignPivotKey)
+            // 2. The Primary Key name of the model (e.g. 'student_number')
+            // 3. Fallback convention: model_name + _id (e.g. 'student_id')
+
+            $modelPkName = self::getPrimaryKeyName($modelClass);
+            $relatedPkName = self::getPrimaryKeyName($relatedClass);
+
+            $foreignPivotKey = $instance->foreignPivotKey
+                ?? $modelPkName
+                ?? (lcfirst($reflection->getShortName()) . '_id');
+
+            $relatedPivotKey = $instance->relatedPivotKey
+                ?? $relatedPkName
+                ?? (lcfirst($relatedReflection->getShortName()) . '_id');
 
             $fk1Type = self::getPrimaryKeyType($modelClass);
             $fk2Type = self::getPrimaryKeyType($relatedClass);
@@ -256,7 +290,22 @@ class Blueprint
             }
             if (!$relatedTable) continue;
 
-            $pivotTable = $instance->pivotTable;
+            // --- RESOLVE PIVOT TABLE NAME ---
+            $pivotTableInput = $instance->pivotTable;
+            $pivotTable = null;
+
+            if ($pivotTableInput) {
+                if (class_exists($pivotTableInput)) {
+                    $pivotReflection = new ReflectionClass($pivotTableInput);
+                    $pivotTableAttr = $pivotReflection->getAttributes(Table::class)[0] ?? null;
+                    if ($pivotTableAttr) {
+                        $pivotTable = $pivotTableAttr->newInstance()->name;
+                    }
+                } else {
+                    $pivotTable = $pivotTableInput;
+                }
+            }
+
             if (!$pivotTable) {
                 $tables = [$currentTable, $relatedTable];
                 sort($tables);
@@ -266,8 +315,17 @@ class Blueprint
             // Fetch Constraints for this pivot table
             $existingConstraints = self::getTableConstraints($db, $pivotTable);
 
-            $foreignPivotKey = $instance->foreignPivotKey ?? lcfirst($reflection->getShortName()) . 'ID';
-            $relatedPivotKey = $instance->relatedPivotKey ?? lcfirst($relatedReflection->getShortName()) . 'ID';
+            // --- RESOLVE KEYS (Same logic as generatePivotTableSql) ---
+            $modelPkName = self::getPrimaryKeyName($modelClass);
+            $relatedPkName = self::getPrimaryKeyName($relatedClass);
+
+            $foreignPivotKey = $instance->foreignPivotKey
+                ?? $modelPkName
+                ?? (lcfirst($reflection->getShortName()) . '_id');
+
+            $relatedPivotKey = $instance->relatedPivotKey
+                ?? $relatedPkName
+                ?? (lcfirst($relatedReflection->getShortName()) . '_id');
 
             $fk1Name = "fk_{$pivotTable}_{$foreignPivotKey}";
             $ownerKey1 = self::getPrimaryKeyName($modelClass) ?? 'id';
