@@ -13,7 +13,7 @@ class Field
     protected array $attributes = [];
     protected array $rules = [];
     protected array $errors = [];
-    protected array $options = []; // For select/radio fields
+    protected array $options = [];
 
     public function __construct(string $name, string $type = 'text', array $config = [])
     {
@@ -66,8 +66,6 @@ class Field
      */
     public function label(array $attributes = []): string
     {
-        // For buttons, the label is usually rendered inside the button tag,
-        // so generating a <label> tag is often unnecessary or incorrect.
         if ($this->label === null || in_array($this->type, ['submit', 'button', 'reset'])) {
             return '';
         }
@@ -83,7 +81,6 @@ class Field
     {
         $attributes = array_merge($this->attributes, $attributes);
 
-        // Add 'is-invalid' class if there are errors (Bootstrap convention)
         if ($this->hasError()) {
             $class = $attributes['class'] ?? '';
             $attributes['class'] = trim($class . ' is-invalid');
@@ -104,7 +101,6 @@ class Field
             return $this->renderButton($attributes);
         }
 
-        // Standard Input
         $attributes['type'] = $this->type;
         $attributes['value'] = (string)$this->value;
 
@@ -151,14 +147,11 @@ class Field
 
     protected function renderButton(array $attributes): string
     {
-        // Use the label as the button text
         $text = $this->label ?? 'Submit';
 
-        // Set the type (submit, button, or reset)
         $type = $this->type;
         unset($attributes['type']); // handled manually in sprintf
 
-        // If a value is explicitly set for the button (e.g. name="action" value="save"), allow it.
         if ($this->value !== null) {
             $attributes['value'] = $this->value;
         }

@@ -12,7 +12,12 @@ use Strux\Bootstrapping\Registry\AppRegistry;
 use Strux\Component\Config\Config;
 use Strux\Support\ContainerBridge;
 
-class Bootstrap
+/**
+ * Class Strux
+ *
+ * The main entry point for creating and bootstrapping a Strux application.
+ */
+class Strux
 {
     /**
      * Create and bootstrap the application.
@@ -68,7 +73,7 @@ class Bootstrap
 
         /**
          * -------------------------------------------------------------------------
-         * Bootstrap The Framework
+         * Strux The Framework
          * -------------------------------------------------------------------------
          */
         $framework = new AppRegistry($container);
