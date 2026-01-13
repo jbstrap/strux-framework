@@ -420,13 +420,12 @@ class Router
                     // Apply defaults again for any params that became null after validation (e.g., optional not present)
                     // and should receive a default.
                     foreach ($route['defaults'] as $paramName => $defaultValue) {
-                        if (!isset($validatedParameters[$paramName]) || $validatedParameters[$paramName] === null) {
+                        if (!isset($validatedParameters[$paramName])) {
                             $validatedParameters[$paramName] = $defaultValue;
                         }
                     }
 
                     $handler = $route['handler'];
-                    $controller = null;
                     $methodName = null;
                     if (is_array($handler) && count($handler) === 2) {
                         $controller = $handler[0];
@@ -485,8 +484,6 @@ class Router
 
         $url = $uriPattern;
         $usedParams = [];
-        $builtUrl = '';
-        $lastPos = 0;
 
         // Find the route definition to get param_definitions for accurate replacement
         $routeDefinitionForGeneration = null;

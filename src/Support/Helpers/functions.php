@@ -23,14 +23,14 @@ if (!function_exists('container')) {
         if ($id === null) {
             return ContainerBridge::getContainer();
         }
-        return ContainerBridge::resolve($id);
+        return ContainerBridge::get($id);
     }
 }
 
 if (!function_exists('request')) {
     function request(): Request
     {
-        return ContainerBridge::resolve(Request::class);
+        return ContainerBridge::get(Request::class);
     }
 }
 
@@ -45,26 +45,26 @@ if (!function_exists('view')) {
     function view(string $filename, array $data = [], int $status = 200): Response
     {
         /** @var ViewInterface $viewEngine */
-        $viewEngine = ContainerBridge::resolve(ViewInterface::class);
+        $viewEngine = ContainerBridge::get(ViewInterface::class);
 
         try {
-            $currentRequest = ContainerBridge::resolve(ServerRequestInterface::class);
+            $currentRequest = ContainerBridge::get(ServerRequestInterface::class);
             if ($currentRequest->getAttribute('csrf_token') && $currentRequest->getAttribute('csrf_field_name')) {
                 $data['csrf_token'] = $currentRequest->getAttribute('csrf_token');
                 $data['csrf_field_name'] = $currentRequest->getAttribute('csrf_field_name');
             }
         } catch (Throwable $e) {
             if (ContainerBridge::has(LoggerInterface::class)) {
-                ContainerBridge::resolve(LoggerInterface::class)
+                ContainerBridge::get(LoggerInterface::class)
                     ->debug('CSRF token not added to view data via helper: ServerRequestInterface not found in container.');
             }
         }
 
         if (ContainerBridge::has(Auth::class)) {
-            $data['auth'] = ContainerBridge::resolve(Auth::class);
+            $data['auth'] = ContainerBridge::get(Auth::class);
         }
         if (ContainerBridge::has(FlashServiceInterface::class)) {
-            $data['flash'] = ContainerBridge::resolve(FlashServiceInterface::class);
+            $data['flash'] = ContainerBridge::get(FlashServiceInterface::class);
         }
 
 
@@ -93,14 +93,14 @@ if (!function_exists('redirectWith')) {
     ): Response
     {
         /** @var FlashServiceInterface $flash */
-        $flash = ContainerBridge::resolve(FlashServiceInterface::class);
+        $flash = ContainerBridge::get(FlashServiceInterface::class);
         if ($flash) {
             foreach ($messages as $type => $message) {
                 $flash->set((string)$type, $message);
             }
         } elseif (!empty($messages)) {
             if (ContainerBridge::has(LoggerInterface::class)) {
-                ContainerBridge::resolve(LoggerInterface::class)
+                ContainerBridge::get(LoggerInterface::class)
                     ->warning("FlashService not available, cannot flash messages for redirect.", [
                         'messages' => $messages
                     ]);
@@ -110,11 +110,11 @@ if (!function_exists('redirectWith')) {
         $targetUri = $uri;
         if ($isRouteName) {
             /** @var Router $router */
-            $router = ContainerBridge::resolve(Router::class);
+            $router = ContainerBridge::get(Router::class);
             try {
                 $targetUri = $router->route($uri, $routeParams);
             } catch (InvalidArgumentException $e) {
-                ContainerBridge::resolve(LoggerInterface::class)
+                ContainerBridge::get(LoggerInterface::class)
                     ->error("Failed to generate route for redirectWith: " . $e->getMessage(), [
                         'route_name' => $uri, 'exception' => $e
                     ]);
@@ -150,12 +150,12 @@ if (!function_exists('route')) {
     function route(string $routeName, array $queryParams = []): string
     {
         if (!ContainerBridge::has(Router::class)) {
-            ContainerBridge::resolve(LoggerInterface::class)
+            ContainerBridge::get(LoggerInterface::class)
                 ->error("Router not found in container. Cannot generate route for '$routeName'.");
             throw new RuntimeException("Router service not available for URL generation.");
         }
         /** @var Router $router */
-        $router = ContainerBridge::resolve(Router::class);
+        $router = ContainerBridge::get(Router::class);
         return url($router->route($routeName, $queryParams));
     }
 }
@@ -202,7 +202,7 @@ if (!function_exists('config')) {
     function config(string $key = '', mixed $default = null): mixed
     {
         /** @var Config $configService */
-        $configService = ContainerBridge::resolve(Config::class);
+        $configService = ContainerBridge::get(Config::class);
         if (!empty($key)) {
             return $configService->get($key, $default);
         }
@@ -276,7 +276,7 @@ if (!function_exists('url')) {
         if ($cachedBaseUrl === null) {
             try {
                 if (class_exists(ContainerBridge::class) && ContainerBridge::has(Config::class)) {
-                    $cachedBaseUrl = ContainerBridge::resolve(Config::class)->get('app.url', '');
+                    $cachedBaseUrl = ContainerBridge::get(Config::class)->get('app.url', '');
                 }
             } catch (Throwable $e) {
                 // Ignore errors and fallback to other methods
@@ -338,7 +338,7 @@ if (!function_exists('storage_url')) {
             try {
                 if (class_exists(ContainerBridge::class) && ContainerBridge::has(Config::class)) {
                     // Fetch the URL from the 'web' disk config
-                    $config = ContainerBridge::resolve(Config::class);
+                    $config = ContainerBridge::get(Config::class);
                     $storageBaseUrl = $config->get('filesystems.disks.web.url');
                 }
             } catch (Throwable $e) {
@@ -449,7 +449,7 @@ if (!function_exists('isActive')) {
 if (!function_exists('cache')) {
     function cache(string $key = '', mixed $default = null)
     {
-        $cacheService = ContainerBridge::resolve(CacheInterface::class);
+        $cacheService = ContainerBridge::get(CacheInterface::class);
         if (!empty($key)) {
             return $cacheService->get($key, $default);
         }
@@ -460,28 +460,28 @@ if (!function_exists('cache')) {
 if (!function_exists('logger')) {
     function logger(): LoggerInterface
     {
-        return ContainerBridge::resolve(LoggerInterface::class);
+        return ContainerBridge::get(LoggerInterface::class);
     }
 }
 
 if (!function_exists('session')) {
     function session(): SessionInterface
     {
-        return ContainerBridge::resolve(SessionInterface::class);
+        return ContainerBridge::get(SessionInterface::class);
     }
 }
 
 if (!function_exists('auth')) {
     function auth(): Auth
     {
-        return ContainerBridge::resolve(Auth::class);
+        return ContainerBridge::get(Auth::class);
     }
 }
 
 if (!function_exists('flash')) {
     function flash(): FlashServiceInterface
     {
-        return ContainerBridge::resolve(FlashServiceInterface::class);
+        return ContainerBridge::get(FlashServiceInterface::class);
     }
 }
 
@@ -513,7 +513,7 @@ if (!function_exists('csrf_token')) {
             }
         } catch (Throwable $e) {
             if (ContainerBridge::has(LoggerInterface::class)) {
-                ContainerBridge::resolve(LoggerInterface::class)
+                ContainerBridge::get(LoggerInterface::class)
                     ->warning("CSRF token field helper failed: " . $e->getMessage());
             }
         }

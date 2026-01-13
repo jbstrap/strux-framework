@@ -8,6 +8,7 @@ use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
 use Psr\Log\LoggerInterface;
+use Strux\Bootstrapping\Registry\ServiceRegistry;
 use Strux\Component\Config\Config;
 use Strux\Component\Http\Middleware\Dispatcher as MiddlewareDispatcher;
 use Strux\Component\Http\Psr7\ServerRequestCreator;
@@ -184,15 +185,38 @@ class App
      */
     public function addRegistry(string $registryClass): self
     {
+        /** @var ServiceRegistry $registry */
         $registry = new $registryClass($this->container);
 
-        if (method_exists($registry, 'register')) {
-            $registry->register();
-        } elseif (method_exists($registry, 'build')) {
+        if (method_exists($registry, 'build')) {
             $registry->build();
         }
 
         return $this;
+    }
+
+    /**
+     * Check if the application is in development environment.
+     */
+    public function isDevelopment(): bool
+    {
+        return $this->getEnvironment() === 'development';
+    }
+
+    /**
+     * Check if the application is in production environment.
+     */
+    public function isProduction(): bool
+    {
+        return $this->getEnvironment() === 'production';
+    }
+
+    /**
+     * Check if the application is in testing environment.
+     */
+    public function isTesting(): bool
+    {
+        return $this->getEnvironment() === 'testing';
     }
 
     /**
@@ -330,9 +354,11 @@ class App
      */
     public function run(): void
     {
+        /** @var ServerRequestCreator $requestCreator */
         $requestCreator = $this->container->get(ServerRequestCreator::class);
         $request = $requestCreator->fromGlobals();
 
+        /** @var RouteDispatcher $routeDispatcher */
         $routeDispatcher = $this->container->get(RouteDispatcher::class);
 
         $middlewareDispatcher = new MiddlewareDispatcher($this->globalMiddleware, $this->container);

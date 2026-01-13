@@ -40,7 +40,6 @@ class ContainerBridge
     public static function getContainer(): ContainerInterface
     {
         if (self::$container === null) {
-            // This error indicates a setup problem in the application's entry point (e.g., web/index.php)
             throw new ContainerException("ContainerBridge: The DI container has not been initialized. Call ContainerBridge::setContainer() first.");
         }
         return self::$container;

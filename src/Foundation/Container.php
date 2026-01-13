@@ -22,7 +22,7 @@ use Throwable;
 class Container implements ContainerInterface
 {
     private array $bindings = [];
-    private array $instances = []; // For singleton and scoped instances
+    private array $instances = [];
 
     /**
      * General purpose binding method.
@@ -35,7 +35,6 @@ class Container implements ContainerInterface
     public function bind(string $id, mixed $concrete, string $lifecycle = 'transient'): void
     {
         $this->bindings[$id] = compact('concrete', 'lifecycle');
-        // If we are re-binding, we must clear any existing singleton instance.
         unset($this->instances[$id]);
     }
 
@@ -52,7 +51,7 @@ class Container implements ContainerInterface
      */
     public function scoped(string $id, mixed $concrete): void
     {
-        $this->bind($id, $concrete, 'singleton'); // Treating scoped as singleton
+        $this->bind($id, $concrete, 'singleton');
     }
 
     /**
@@ -78,7 +77,6 @@ class Container implements ContainerInterface
      */
     public function get(string $id): mixed
     {
-        // For singletons/scoped, if we already have an instance, return it immediately.
         if (isset($this->instances[$id])) {
             return $this->instances[$id];
         }
@@ -86,20 +84,16 @@ class Container implements ContainerInterface
         $concrete = $this->bindings[$id]['concrete'] ?? $id;
         $lifecycle = $this->bindings[$id]['lifecycle'] ?? 'transient';
 
-        // If no definition is found but the ID is a valid, instantiable class name, auto-wire it.
-        // Auto-wired classes are treated as transient by default unless bound otherwise.
         if (!isset($this->bindings[$id]) && !class_exists($id)) {
             throw new NotFoundException("No entry or class found for identifier '$id'");
         }
 
-        // Resolve the entry. This could be a Closure, object, or class name string.
         try {
             $instance = $this->resolve($concrete);
         } catch (ContainerException|NotFoundException $e) {
             throw new RuntimeException("An error occurred: " . $e);
         }
 
-        // If the service is a singleton/scoped, store the newly created instance for future requests.
         if ($lifecycle === 'singleton') {
             $this->instances[$id] = $instance;
         }
@@ -126,7 +120,6 @@ class Container implements ContainerInterface
             return $this->autowire($concrete);
         }
 
-        // If it's not a closure or a class string, return it as is (e.g., a pre-made object or etc value).
         return $concrete;
     }
 

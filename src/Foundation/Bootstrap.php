@@ -8,7 +8,7 @@ use Dotenv\Exception\ValidationException;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
-use Strux\Bootstrapping\Registry\FrameworkRegistry;
+use Strux\Bootstrapping\Registry\AppRegistry;
 use Strux\Component\Config\Config;
 use Strux\Support\ContainerBridge;
 
@@ -59,6 +59,10 @@ class Bootstrap
             throw new \RuntimeException("Configuration file not found at: " . $configFile);
         }
 
+        if (!is_dir($rootPath . '/vendor')) {
+            throw new \RuntimeException("Vendor directory not found. Please run 'composer install'.");
+        }
+
         $configValues = require $configFile;
         $container->singleton(Config::class, fn() => new Config($configValues));
 
@@ -67,7 +71,7 @@ class Bootstrap
          * Bootstrap The Framework
          * -------------------------------------------------------------------------
          */
-        $framework = new FrameworkRegistry($container);
+        $framework = new AppRegistry($container);
         $framework->build();
 
         /**

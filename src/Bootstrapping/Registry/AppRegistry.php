@@ -4,59 +4,103 @@ declare(strict_types=1);
 
 namespace Strux\Bootstrapping\Registry;
 
+use Psr\Container\ContainerInterface;
+use Strux\Foundation\App;
+
 class AppRegistry extends ServiceRegistry
 {
+    protected ContainerInterface $container;
+
+    /**
+     * @var array<int, object>
+     */
+    protected array $registries = [];
+
+    /**
+     * Core registries that are always loaded.
+     */
+    protected array $coreRegistries = [
+        LogRegistry::class,
+        DatabaseRegistry::class,
+        AuthRegistry::class,
+        HttpRegistry::class,
+        RouteRegistry::class,
+        ViewRegistry::class,
+        EventRegistry::class,
+        MiddlewareRegistry::class,
+        InfrastructureRegistry::class,
+    ];
+
+    /**
+     * Build and Register Services (Bindings).
+     */
     public function build(): void
     {
-        $servicesPath = ROOT_PATH . '/etc/services.php';
+        // 1. Load Core Framework Registries
+        foreach ($this->coreRegistries as $registryClass) {
+            $this->instantiateAndBuild($registryClass);
+        }
+        // 2. Discover and Load User Registries
+        $this->discoverUserRegistries();
+    }
 
-        if (!file_exists($servicesPath)) {
+    /**
+     * Initialize/Boot Services (After bindings are complete).
+     *
+     * @param App $app
+     */
+    public function init(App $app): void
+    {
+        /**@var ServiceRegistry $registry */
+        foreach ($this->registries as $registry) {
+            if (method_exists($registry, 'init')) {
+                $registry->init($app);
+            }
+        }
+    }
+
+    /**
+     * Instantiate a registry class and call its build/register method.
+     *
+     * @param string $className
+     */
+    protected function instantiateAndBuild(string $className): void
+    {
+        if (!class_exists($className)) {
             return;
         }
 
-        $services = require $servicesPath;
+        /** @var ServiceRegistry $registry */
+        $registry = new $className($this->container);
 
-        if (!is_array($services)) {
+        $this->registries[] = $registry;
+
+        if (method_exists($registry, 'build')) {
+            $registry->build();
+        }
+    }
+
+    /**
+     * Scan the App/Registry directory for user-defined registries.
+     */
+    protected function discoverUserRegistries(): void
+    {
+        // $registryDir = (defined('ROOT_PATH') ? ROOT_PATH : getcwd()) . '/src/Registry';
+        $registryDir = !defined('ROOT_PATH')
+            ? define('ROOT_PATH', getcwd() . '/src/Registry')
+            : ROOT_PATH . '/src/Registry';
+
+        if (!is_dir($registryDir)) {
             return;
         }
 
-        // 1. Register Singletons (Shared instance for the entire request)
-        if (isset($services['singletons']) && is_array($services['singletons'])) {
-            foreach ($services['singletons'] as $abstract => $concrete) {
-                $this->container->singleton($abstract, $concrete);
-            }
-        }
+        $files = glob($registryDir . '/*.php');
 
-        // 2. Register Transients (New instance every time requested)
-        if (isset($services['transients']) && is_array($services['transients'])) {
-            foreach ($services['transients'] as $abstract => $concrete) {
-                if (method_exists($this->container, 'transient')) {
-                    $this->container->transient($abstract, $concrete);
-                } else {
-                    $this->container->bind($abstract, $concrete);
-                }
-            }
-        }
+        foreach ($files as $file) {
+            $filename = basename($file, '.php');
+            $className = "App\\Registry\\{$filename}";
 
-        // 3. Register Scoped
-        // Note: In standard PHP-FPM, 'Scoped' is effectively the same as 'Singleton'
-        // (shared for the duration of the request).
-        if (isset($services['scoped']) && is_array($services['scoped'])) {
-            foreach ($services['scoped'] as $abstract => $concrete) {
-                if (method_exists($this->container, 'scoped')) {
-                    $this->container->scoped($abstract, $concrete);
-                } else {
-                    // Fallback to singleton if explicit 'scoped' method is missing
-                    $this->container->singleton($abstract, $concrete);
-                }
-            }
-        }
-
-        // 4. Handle Legacy/Flat definitions (optional backward compatibility)
-        foreach ($services as $abstract => $concrete) {
-            if (is_string($abstract) && !in_array($abstract, ['singletons', 'transients', 'scoped'])) {
-                $this->container->bind($abstract, $concrete);
-            }
+            $this->instantiateAndBuild($className);
         }
     }
 }

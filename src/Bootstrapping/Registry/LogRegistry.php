@@ -23,6 +23,7 @@ class LogRegistry extends ServiceRegistry
             /**@var Config $config */
             $config = $c->get(Config::class);
             $logger = new Logger($config->get('app.name', 'app'));
+            $env = $config->get('app.env', 'production');
             $logLevel = $config->get('app.debug', false) ? Level::Debug : Level::Info;
             $logFilePath = $config->get('app.log_dir') . '/app.log';
             if (!is_dir(dirname($logFilePath))) {
@@ -42,7 +43,7 @@ class LogRegistry extends ServiceRegistry
     public function init(App $app): void
     {
         /**@var Config $config */
-        $config = $app->getContainer()->get(Config::class);
+        $config = $this->container->get(Config::class);
         $config->set('app.log_dir', $app->getRootPath() . '/var/logs');
     }
 }

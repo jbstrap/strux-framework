@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Strux\Bootstrapping\Registry;
 
 use InvalidArgumentException;
+use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use RuntimeException;
 use Strux\Component\Config\Config;
 use Strux\Component\View\PlatesAdapter;
@@ -46,6 +48,10 @@ class ViewRegistry extends ServiceRegistry
         });
     }
 
+    /**
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     */
     public function init(App $app): void
     {
         /**@var Config $config */

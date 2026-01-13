@@ -14,6 +14,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\SimpleCache\CacheInterface;
+use Psr\SimpleCache\InvalidArgumentException;
 use ReflectionFunction;
 use ReflectionMethod;
 use Strux\Component\Attributes\Consumes;
@@ -44,19 +45,27 @@ class RouteDispatcher implements RequestHandlerInterface
      * @throws RouteNotFoundException
      * @throws ContainerExceptionInterface
      * @throws HttpMethodNotAllowedException
+     * @throws InvalidArgumentException
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $routeInfo = $this->router->dispatch($request->getMethod(), $request->getUri()->getPath());
+        $routeInfo = $this->router->dispatch(
+            $request->getMethod(),
+            $request->getUri()->getPath()
+        );
 
         if (isset($routeInfo['type']) && $routeInfo['type'] === 'redirect') {
+            /** @var ResponseFactoryInterface $responseFactory */
             $responseFactory = $this->container->get(ResponseFactoryInterface::class);
-            return $responseFactory->createResponse($routeInfo['status_code'])
+            return $responseFactory
+                ->createResponse($routeInfo['status_code'])
                 ->withHeader('Location', (string)$routeInfo['target']);
         }
 
         if (!isset($routeInfo['type']) || $routeInfo['type'] !== 'handler') {
-            throw new LogicException("Router dispatch returned an unknown or invalid route type: " . ($routeInfo['type'] ?? 'undefined'));
+            throw new LogicException(
+                "Router dispatch returned an unknown or invalid route type: " . ($routeInfo['type'] ?? 'undefined')
+            );
         }
 
         // 1. Store full route info
@@ -83,6 +92,7 @@ class RouteDispatcher implements RequestHandlerInterface
         $this->container->set(ServerRequestInterface::class, $request);
 
         $cacheTtl = $routeInfo['extra']['cache_ttl'] ?? null;
+        /** @var CacheInterface $cacheService */
         $cacheService = $this->container->get(CacheInterface::class);
 
         if ($cacheTtl > 0 && in_array(strtoupper($request->getMethod()), ['GET', 'HEAD'])) {
@@ -92,6 +102,7 @@ class RouteDispatcher implements RequestHandlerInterface
                 // CACHE HIT
                 $cachedData = $cacheService->get($cacheKey);
                 if (is_array($cachedData) && isset($cachedData['body']) && isset($cachedData['headers'])) {
+                    /** @var ResponseFactoryInterface $responseFactory */
                     $responseFactory = $this->container->get(ResponseFactoryInterface::class);
                     $response = $responseFactory->createResponse(200);
                     $response->getBody()->write($cachedData['body']);
@@ -187,9 +198,7 @@ class RouteDispatcher implements RequestHandlerInterface
         $middlewareDispatcher = new MiddlewareDispatcher($routeInfo['middleware'] ?? [], $this->container);
         $response = $middlewareDispatcher->dispatch($request, $controllerActionHandler);
 
-        // Use the same $cacheTtl variable from above
         if (isset($cacheTtl) && $cacheTtl > 0 && in_array(strtoupper($request->getMethod()), ['GET', 'HEAD']) && $response->getStatusCode() === 200) {
-            // Add the correct Cache-Control header to the response before caching it.
             $response = $response->withHeader('Cache-Control', "web, max-age=$cacheTtl");
 
             $cacheKey = 'route_cache_' . md5($request->getUri()->__toString());
