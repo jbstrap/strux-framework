@@ -1,7 +1,5 @@
 <?php
 
-// This middleware will automatically transform empty string values from POST data to null.
-
 declare(strict_types=1);
 
 namespace Strux\Component\Middleware;
@@ -18,7 +16,9 @@ class ConvertEmptyStringsToNull implements MiddlewareInterface
      *
      * Processes the request and returns a response.
      */
-    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+    public function process(
+        ServerRequestInterface  $request,
+        RequestHandlerInterface $handler): ResponseInterface
     {
         $parsedBody = $request->getParsedBody();
 

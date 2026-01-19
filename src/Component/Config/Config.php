@@ -11,15 +11,74 @@ class Config implements ArrayAccess
      *
      * @var array<string,mixed>
      */
-    private array $items = [];
+    private array $items;
+    private ?string $rootPath;
 
     /**
      * @param array<string,mixed> $items Initial etc (e.g., from $_SERVER, $_ENV or a parsed etc file)
      */
-    public function __construct(array $items = [])
+    public function __construct(array $items = [], ?string $rootPath = null)
     {
-        // Merge in $_SERVER, so you can also read server vars
-        $this->items = array_merge($items, $_SERVER, $_ENV);
+        $this->rootPath = $rootPath;
+        $this->items = $items;
+
+        // Auto-load class-based configurations
+        $this->loadConfigurationClasses();
+
+        // Sort the top-level keys (filenames/groups) alphabetically
+        ksort($this->items);
+        $this->items = array_merge($this->items, $_SERVER, $_ENV);
+    }
+
+    /**
+     * Scan src/Config for classes and load them.
+     */
+    protected function loadConfigurationClasses(): void
+    {
+        $configDir = $this->rootPath . '/src/Config' ?? getcwd() . '/src/Config';
+
+        if (!is_dir($configDir)) {
+            return;
+        }
+
+        $files = glob($configDir . '/*.php');
+
+        foreach ($files as $file) {
+            $filename = basename($file, '.php');
+            $key = strtolower($filename);
+
+            // 1. Try to include the file and capture the return value
+            // This supports: return new class implements ConfigInterface { ... };
+            $returned = include_once $file;
+
+            if (is_object($returned)) {
+                $this->mergeConfigObject($key, $returned);
+                continue;
+            }
+
+            // 2. Fallback to Class Name inference (Standard named classes)
+            $className = "App\\Config\\{$filename}";
+
+            if (class_exists($className)) {
+                $this->mergeConfigObject($key, new $className());
+            }
+        }
+    }
+
+    /**
+     * Helper to merge config object data.
+     */
+    protected function mergeConfigObject(string $key, object $configInstance): void
+    {
+        if (method_exists($configInstance, 'toArray')) {
+            $configData = $configInstance->toArray();
+
+            // Key the config by the filename (lowercased)
+            // e.g. App.php -> 'app' => [...]
+
+            // Merge into existing items (Class config overrides array config if conflict)
+            $this->items[$key] = array_merge($this->items[$key] ?? [], $configData);
+        }
     }
 
     /**
@@ -127,6 +186,16 @@ class Config implements ArrayAccess
         if (isset($current[$lastSegment])) {
             unset($current[$lastSegment]);
         }
+    }
+
+    /**
+     * Get all configuration items as an associative array.
+     *
+     * @return array<string,mixed>
+     */
+    public function all(): array
+    {
+        return $this->items;
     }
 
     /**

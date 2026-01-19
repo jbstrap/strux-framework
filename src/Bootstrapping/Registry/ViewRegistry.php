@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace Strux\Bootstrapping\Registry;
 
 use InvalidArgumentException;
-use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
-use Psr\Container\NotFoundExceptionInterface;
 use RuntimeException;
 use Strux\Component\Config\Config;
 use Strux\Component\View\PlatesAdapter;
@@ -48,14 +46,11 @@ class ViewRegistry extends ServiceRegistry
         });
     }
 
-    /**
-     * @throws ContainerExceptionInterface
-     * @throws NotFoundExceptionInterface
-     */
     public function init(App $app): void
     {
-        /**@var Config $config */
-        $config = $app->getContainer()->get(Config::class);
-        $config->set('app.view_dir', $app->getRootPath() . '/templates');
+        $this->config->set('view.template_paths', [
+            'default' => dirname(__DIR__, 6) . '/templates',
+            'partials' => dirname(__DIR__, 6) . '/templates/partials',
+        ]);
     }
 }

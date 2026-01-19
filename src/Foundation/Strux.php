@@ -8,6 +8,7 @@ use Dotenv\Exception\ValidationException;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
+use ReflectionException;
 use Strux\Bootstrapping\Registry\AppRegistry;
 use Strux\Component\Config\Config;
 use Strux\Support\ContainerBridge;
@@ -25,7 +26,7 @@ class Strux
      * @param string $rootPath The root path of the application.
      * @return App The bootstrapped application instance.
      * @throws ContainerExceptionInterface
-     * @throws NotFoundExceptionInterface
+     * @throws NotFoundExceptionInterface|ReflectionException
      */
     public static function create(string $rootPath): App
     {
@@ -69,7 +70,7 @@ class Strux
         }
 
         $configValues = require $configFile;
-        $container->singleton(Config::class, fn() => new Config($configValues));
+        $container->singleton(Config::class, fn() => new Config($configValues, $rootPath));
 
         /**
          * -------------------------------------------------------------------------

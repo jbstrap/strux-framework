@@ -28,21 +28,18 @@ class Router
     private ?array $currentRoute = null;
 
     public const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'];
-    private const PARAM_TYPES_REGEX_VALIDATORS = [ // For actual validation
+    private const PARAM_TYPES_REGEX_VALIDATORS = [
         'int' => '/^\d+$/',
-        'string' => '/^[a-zA-Z0-9_.-]+$/', // Stricter than just any string
+        'string' => '/^[a-zA-Z0-9_.-]+$/',
         'slug' => '/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
         'alpha' => '/^[a-zA-Z]+$/',
         'alnum' => '/^[a-zA-Z0-9]+$/',
-        '*' => '/^.+$/', // Wildcard always matches if segment exists
+        '*' => '/^.+$/',
     ];
-    // Regex for capturing segment values in the main route regex
+
     private const GENERIC_SEGMENT_CAPTURE_REGEX = '[^/]+';
     private const WILDCARD_SEGMENT_CAPTURE_REGEX = '.+';
 
-
-    // Pattern to match the content of a placeholder segment (after the leading slash)
-    // e.g., "*:name", "type:name|?", ":name|?"
     private const SEGMENT_PLACEHOLDER_CORE_PATTERN =
         '/^(?:' .
         '(?P<wildcard_def>\*\:(?P<wildcard_name>[a-zA-Z_][a-zA-Z0-9_-]+))' . // *:name
@@ -345,7 +342,6 @@ class Router
         $this->currentGroupMiddleware = $previousGroupMiddleware;
         $this->currentGroupDefaults = $previousGroupDefaults;
     }
-
 
     public function dispatch(string $httpMethod, string $uri): array
     {
