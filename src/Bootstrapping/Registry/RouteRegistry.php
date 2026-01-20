@@ -15,7 +15,7 @@ use Strux\Component\Routing\ParameterResolver;
 use Strux\Component\Routing\RouteDispatcher;
 use Strux\Component\Routing\Router;
 use Strux\Component\Routing\RouterLoader;
-use Strux\Foundation\App;
+use Strux\Foundation\Application;
 
 class RouteRegistry extends ServiceRegistry
 {
@@ -47,7 +47,7 @@ class RouteRegistry extends ServiceRegistry
      * @throws ReflectionException
      * @throws NotFoundExceptionInterface
      */
-    public function init(App $app): void
+    public function init(Application $app): void
     {
         $router = $app->getRouter();
         /** @var RouterLoader $routerLoader */

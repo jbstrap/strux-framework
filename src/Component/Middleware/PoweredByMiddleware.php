@@ -22,7 +22,7 @@ class PoweredByMiddleware implements MiddlewareInterface
     public function __construct(array $config)
     {
         $this->enabled = (bool)($config['enabled'] ?? true);
-        $this->value = $config['value'] ?? 'Strux Framework';
+        $this->value = $config['value'] ?? 'Kernel Framework';
     }
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface

@@ -30,7 +30,7 @@ use Strux\Component\Middleware\RequestLoggerMiddleware;
 use Strux\Component\Routing\Router;
 use Strux\Component\Session\SessionInterface;
 use Strux\Component\View\ViewInterface;
-use Strux\Foundation\App;
+use Strux\Foundation\Application;
 use Strux\Support\Helpers\FlashServiceInterface;
 use Tuupola\Middleware\CorsMiddleware;
 
@@ -130,7 +130,7 @@ class MiddlewareRegistry extends ServiceRegistry
      * @throws ContainerExceptionInterface
      * @throws NotFoundExceptionInterface
      */
-    public function init(App $app): void
+    public function init(Application $app): void
     {
         try {
             $app->addMiddleware($this->container->get(ErrorHandlerMiddleware::class));

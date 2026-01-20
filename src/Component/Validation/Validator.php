@@ -97,7 +97,7 @@ class Validator implements ValidatorInterface
             $ruleName = $ruleString;
         }
 
-        $className = 'Strux\\Component\\Validation\\Rules\\' . ucfirst(strtolower($ruleName));
+        $className = 'Kernel\\Component\\Validation\\Rules\\' . ucfirst(strtolower($ruleName));
 
         if (class_exists($className)) {
             return new $className(...$params);

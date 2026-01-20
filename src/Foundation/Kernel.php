@@ -14,21 +14,22 @@ use Strux\Component\Config\Config;
 use Strux\Support\ContainerBridge;
 
 /**
- * Class Strux
+ * Class Kernel
  *
- * The main entry point for creating and bootstrapping a Strux application.
+ * The main entry point for creating and bootstrapping a Kernel application.
  */
-class Strux
+class Kernel
 {
     /**
      * Create and bootstrap the application.
      *
      * @param string $rootPath The root path of the application.
-     * @return App The bootstrapped application instance.
+     * @param string|null $appClass The Application class to instantiate (defaults to Strux\Foundation\Application).
+     * @return Application The bootstrapped application instance.
      * @throws ContainerExceptionInterface
      * @throws NotFoundExceptionInterface|ReflectionException
      */
-    public static function create(string $rootPath): App
+    public static function create(string $rootPath, ?string $appClass = null): Application
     {
         /**
          * -------------------------------------------------------------------------
@@ -60,21 +61,20 @@ class Strux
          * Register Core Configuration
          * -------------------------------------------------------------------------
          */
-        $configFile = $rootPath . '/etc/config.php';
-        if (!file_exists($configFile)) {
-            throw new \RuntimeException("Configuration file not found at: " . $configFile);
+        $configValues = [];
+        if (file_exists($rootPath . '/etc/config.php')) {
+            $configValues = require $rootPath . '/etc/config.php';
         }
 
         if (!is_dir($rootPath . '/vendor')) {
             throw new \RuntimeException("Vendor directory not found. Please run 'composer install'.");
         }
 
-        $configValues = require $configFile;
         $container->singleton(Config::class, fn() => new Config($configValues, $rootPath));
 
         /**
          * -------------------------------------------------------------------------
-         * Strux The Framework
+         * Kernel The Framework
          * -------------------------------------------------------------------------
          */
         $framework = new AppRegistry($container);
@@ -85,7 +85,14 @@ class Strux
          * Create & Initialize The Application
          * -------------------------------------------------------------------------
          */
-        $app = new App($container, $rootPath);
+        $appClassName = $appClass ?? Application::class;
+
+        if (!class_exists($appClassName)) {
+            throw new \RuntimeException("Application class '$appClassName' not found.");
+        }
+
+        /** @var Application $app */
+        $app = new $appClassName($container, $rootPath);
         $framework->init($app);
 
         return $app;

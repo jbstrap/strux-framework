@@ -57,7 +57,7 @@ class Config implements ArrayAccess
             }
 
             // 2. Fallback to Class Name inference (Standard named classes)
-            $className = "App\\Config\\{$filename}";
+            $className = "Application\\Config\\{$filename}";
 
             if (class_exists($className)) {
                 $this->mergeConfigObject($key, new $className());
@@ -74,7 +74,7 @@ class Config implements ArrayAccess
             $configData = $configInstance->toArray();
 
             // Key the config by the filename (lowercased)
-            // e.g. App.php -> 'app' => [...]
+            // e.g. Application.php -> 'app' => [...]
 
             // Merge into existing items (Class config overrides array config if conflict)
             $this->items[$key] = array_merge($this->items[$key] ?? [], $configData);

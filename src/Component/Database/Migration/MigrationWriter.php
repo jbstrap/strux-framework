@@ -99,7 +99,7 @@ class MigrationWriter
         return <<<PHP
 <?php
 
-use Strux\Component\Database\Migration\Migration;
+use Kernel\Component\Database\Migration\Migration;
 
 return new class extends Migration {
     function up(): void

@@ -16,7 +16,7 @@ use Strux\Component\Http\ResponseEmitter;
 use Strux\Component\Routing\RouteDispatcher;
 use Strux\Component\Routing\Router;
 
-class App
+class Application
 {
     private ContainerInterface $container;
     private string $rootPath;

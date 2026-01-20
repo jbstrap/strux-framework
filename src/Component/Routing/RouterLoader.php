@@ -65,7 +65,7 @@ readonly class RouterLoader
 
     /**
      * Helper to recursively find PHP classes in a directory based on PSR-4 conventions.
-     * Assumes 'src' maps to 'App'.
+     * Assumes 'src' maps to 'Application'.
      */
     private function findClassNames(string $directory): array
     {
@@ -77,7 +77,7 @@ readonly class RouterLoader
                 $filePath = $file->getRealPath();
 
                 // We need to determine the Namespace from the file path.
-                // We assume the project root has 'src' which maps to 'App'.
+                // We assume the project root has 'src' which maps to 'Application'.
 
                 // 1. Find where 'src' starts
                 $srcPos = strpos($filePath, 'src' . DIRECTORY_SEPARATOR);
@@ -93,8 +93,8 @@ readonly class RouterLoader
                     // 4. Convert slashes to namespace backslashes
                     $classPath = str_replace(DIRECTORY_SEPARATOR, '\\', $relativePath);
 
-                    // 5. Prepend App base namespace
-                    $fqcn = "App\\" . $classPath;
+                    // 5. Prepend Application base namespace
+                    $fqcn = "Application\\" . $classPath;
 
                     $classes[] = $fqcn;
                 }

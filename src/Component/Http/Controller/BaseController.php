@@ -99,7 +99,7 @@ abstract class BaseController
     }
 
     /**
-     * Creates a new Strux\Component\Http\Response object.
+     * Creates a new Kernel\Component\Http\Response object.
      */
     protected function createResponse(string $content = '', int $status = 200, array $headers = []): Response
     {
@@ -107,21 +107,21 @@ abstract class BaseController
     }
 
     /**
-     * Helper to create a JSON response using Strux\Component\Http\Response.
+     * Helper to create a JSON response using Kernel\Component\Http\Response.
      */
     protected function json(mixed $data, int $status = 200, array $headers = [], int $encodingOptions = 0): Response
     {
         $response = $this->createResponse('', $status, $headers);
-        return $response->json($data, $status, $headers, $encodingOptions); // json method now on App\Core\Response
+        return $response->json($data, $status, $headers, $encodingOptions); // json method now on Application\Core\Response
     }
 
     /**
-     * Helper to create a redirect response using Strux\Component\Http\Response.
+     * Helper to create a redirect response using Kernel\Component\Http\Response.
      */
     protected function redirect(string $uri, int $status = 302): Response
     {
         $response = $this->createResponse('', $status);
-        return $response->redirect($uri, $status); // redirect method now on App\Core\Response
+        return $response->redirect($uri, $status); // redirect method now on Application\Core\Response
     }
 
     /**
@@ -203,7 +203,7 @@ abstract class BaseController
     }
 
     /**
-     * Renders a view and returns an Strux\Component\Http\Response.
+     * Renders a view and returns an Kernel\Component\Http\Response.
      */
     protected function view(string $templateName, array $data = [], int $status = 200): Response
     {

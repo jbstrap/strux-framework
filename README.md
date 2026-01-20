@@ -144,7 +144,7 @@ class PageController extends Controller
 {
     public function home(Request $request)
     {
-        return $this->view('home', ['name' => 'Strux']);
+        return $this->view('home', ['name' => 'Kernel']);
     }
 }
 ```

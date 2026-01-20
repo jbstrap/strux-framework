@@ -7,7 +7,7 @@ namespace Strux\Bootstrapping\Registry;
 use Psr\Container\ContainerInterface;
 use ReflectionClass;
 use ReflectionException;
-use Strux\Foundation\App;
+use Strux\Foundation\Application;
 use Strux\Support\ContainerBridge;
 
 class AppRegistry extends ServiceRegistry
@@ -51,20 +51,20 @@ class AppRegistry extends ServiceRegistry
             $this->instantiateAndBuild($registryClass);
         }
 
-        // 2. Auto-discover User Registries (App\Registry\*)
+        // 2. Auto-discover User Registries (Application\Registry\*)
         $this->discoverUserRegistries();
     }
 
     /**
      * Initialize/Boot Services (After bindings are complete).
      *
-     * @param App $app
+     * @param Application $app
      */
-    public function init(App $app): void
+    public function init(Application $app): void
     {
         foreach ($this->registries as $registry) {
             if (method_exists($registry, 'init')) {
-                // Pass the App instance if the method expects it, otherwise call without args
+                // Pass the Application instance if the method expects it, otherwise call without args
                 $registry->init($app);
             } elseif (method_exists($registry, 'boot')) {
                 // Support 'boot' as an alternative naming convention
@@ -131,12 +131,12 @@ class AppRegistry extends ServiceRegistry
     }
 
     /**
-     * Scan the App/Registry directory for user-defined registries.
+     * Scan the Application/Registry directory for user-defined registries.
      * @throws ReflectionException
      */
     protected function discoverUserRegistries(): void
     {
-        // Assume standard structure: ROOT_PATH/src/Registry maps to App\Registry
+        // Assume standard structure: ROOT_PATH/src/Registry maps to Application\Registry
         $registryDir = (defined('ROOT_PATH') ? ROOT_PATH : getcwd()) . '/src/Registry';
 
         if (!is_dir($registryDir)) {
@@ -158,7 +158,7 @@ class AppRegistry extends ServiceRegistry
             // 2. Fallback to Class Name inference (Standard named classes)
             // This supports: class AppRegistry extends ServiceRegistry { ... }
             $filename = basename($file, '.php');
-            $className = "App\\Registry\\{$filename}";
+            $className = "Application\\Registry\\{$filename}";
 
             // Check if class exists (it should, since we just included the file)
             if (class_exists($className)) {

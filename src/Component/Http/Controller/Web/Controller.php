@@ -68,7 +68,7 @@ abstract class Controller extends BaseController
     /**
      * Magic getter for lazy-loading models or starting a query on the default model.
      * Accessing `$this->model` will return `ModelName::query()`.
-     * Accessing `$this->SomeModel` will attempt to load `App\Models\SomeModel`.
+     * Accessing `$this->SomeModel` will attempt to load `Application\Models\SomeModel`.
      */
     public function __get(string $name)
     {
@@ -77,7 +77,7 @@ abstract class Controller extends BaseController
             if ($this->defaultModelName === null) {
                 throw new RuntimeException("Default model name could not be determined for " . static::class);
             }
-            $modelClass = 'App\\Models\\' . ucfirst($this->defaultModelName);
+            $modelClass = 'Application\\Models\\' . ucfirst($this->defaultModelName);
             if (!class_exists($modelClass)) {
                 throw new RuntimeException("Default model class '$modelClass' not found for controller " . static::class);
             }
@@ -91,7 +91,7 @@ abstract class Controller extends BaseController
         }
 
         // Attempt to load and cache the requested model instance
-        $modelClass = 'App\\Models\\' . ucfirst($name);
+        $modelClass = 'Application\\Models\\' . ucfirst($name);
         if (class_exists($modelClass)) {
             // Instantiate and cache it as a data-holding object.
             $modelInstance = new $modelClass();

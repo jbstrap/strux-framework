@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Strux\Bootstrapping\Registry;
 
-use Strux\Foundation\App;
+use Strux\Foundation\Application;
 
 interface ServiceRegistryInterface
 {
@@ -16,5 +16,5 @@ interface ServiceRegistryInterface
     /**
      * Initialize the registry's services after the application has been constructed.
      */
-    public function init(App $app): void;
+    public function init(Application $app): void;
 }

@@ -11,7 +11,7 @@ use Strux\Component\Config\Config;
 use Strux\Component\View\PlatesAdapter;
 use Strux\Component\View\TwigAdapter;
 use Strux\Component\View\ViewInterface;
-use Strux\Foundation\App;
+use Strux\Foundation\Application;
 
 class ViewRegistry extends ServiceRegistry
 {
@@ -46,7 +46,7 @@ class ViewRegistry extends ServiceRegistry
         });
     }
 
-    public function init(App $app): void
+    public function init(Application $app): void
     {
         $this->config->set('view.template_paths', [
             'default' => dirname(__DIR__, 6) . '/templates',

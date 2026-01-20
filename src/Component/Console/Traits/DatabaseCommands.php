@@ -299,7 +299,7 @@ trait DatabaseCommands
 
             if ($class) {
                 if (!str_contains($class, '\\')) {
-                    $class = "App\\Database\\Seeds\\$class";
+                    $class = "Application\\Database\\Seeds\\$class";
                 }
                 echo "Seeding class: $class\n";
                 $runner->run($class);

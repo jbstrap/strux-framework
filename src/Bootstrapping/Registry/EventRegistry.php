@@ -12,13 +12,11 @@ use Psr\EventDispatcher\ListenerProviderInterface;
 use Psr\Log\LoggerInterface;
 use Strux\Component\Config\Config;
 use Strux\Component\Events\CallQueuedListener;
-
 use Strux\Component\Events\EventDispatcher;
 use Strux\Component\Events\ListenerProvider;
 use Strux\Component\Queue\Queue;
 use Strux\Component\Queue\ShouldQueue;
-
-use Strux\Foundation\App;
+use Strux\Foundation\Application;
 
 class EventRegistry extends ServiceRegistry
 {
@@ -39,7 +37,7 @@ class EventRegistry extends ServiceRegistry
      * @throws NotFoundExceptionInterface
      * @throws ContainerExceptionInterface
      */
-    public function init(App $app): void
+    public function init(Application $app): void
     {
         $container = $app->getContainer();
         /** @var EventDispatcher $dispatcher */

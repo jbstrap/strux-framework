@@ -24,7 +24,7 @@ use Strux\Auth\UserProviderInterface;
 use Strux\Component\Config\Config;
 use Strux\Component\Events\EventDispatcher;
 use Strux\Component\Session\SessionInterface;
-use Strux\Foundation\App;
+use Strux\Foundation\Application;
 
 class AuthRegistry extends ServiceRegistry
 {
@@ -73,7 +73,7 @@ class AuthRegistry extends ServiceRegistry
      * @throws ContainerExceptionInterface
      * @throws NotFoundExceptionInterface
      */
-    public function init(App $app): void
+    public function init(Application $app): void
     {
         /** @var EventDispatcher $dispatcher */
         $dispatcher = $app->getContainer()->get(EventDispatcher::class);

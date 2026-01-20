@@ -32,8 +32,8 @@ class MigrationGenerator
         if (defined('ROOT_PATH')) {
             $projectRoot = ROOT_PATH;
         } else {
-            // Fallback: Go up 3 levels from 'Strux/Component/Database' to reach project root
-            // 1: Component, 2: Strux, 3: Root
+            // Fallback: Go up 3 levels from 'Kernel/Component/Database' to reach project root
+            // 1: Component, 2: Kernel, 3: Root
             $projectRoot = dirname(__DIR__, 3);
         }
 
@@ -200,12 +200,12 @@ class MigrationGenerator
             if ($file->isFile() && $file->getExtension() === 'php') {
                 // Convert file path to Namespace
                 // E.g. C:\xampp\htdocs\custom\src\Domain\Identity\Entity\User.php
-                // Becomes: App\Domain\Identity\Entity\User
+                // Becomes: Application\Domain\Identity\Entity\User
 
                 $filePath = $file->getRealPath();
                 $relativePath = substr($filePath, strlen($this->srcPath) + 1); // Remove .../src/
                 $classPath = str_replace(['/', '.php'], ['\\', ''], $relativePath);
-                $className = "App\\" . $classPath;
+                $className = "Application\\" . $classPath;
 
                 echo "Scanning model: $className\n";
                 if (class_exists($className)) {

@@ -6,7 +6,7 @@ namespace Strux\Bootstrapping\Registry;
 
 use Psr\Container\ContainerInterface;
 use Strux\Component\Config\Config;
-use Strux\Foundation\App;
+use Strux\Foundation\Application;
 use Strux\Support\ContainerBridge;
 
 abstract class ServiceRegistry implements ServiceRegistryInterface
@@ -40,7 +40,7 @@ abstract class ServiceRegistry implements ServiceRegistryInterface
     /**
      * The init method is optional for registries.
      */
-    public function init(App $app): void
+    public function init(Application $app): void
     {
         // This method can be overridden by child registries if they need init logic.
     }

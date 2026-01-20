@@ -13,7 +13,7 @@ use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
 use Psr\Log\LoggerInterface;
 use Strux\Component\Config\Config;
-use Strux\Foundation\App;
+use Strux\Foundation\Application;
 
 class LogRegistry extends ServiceRegistry
 {
@@ -40,7 +40,7 @@ class LogRegistry extends ServiceRegistry
      * @throws ContainerExceptionInterface
      * @throws NotFoundExceptionInterface
      */
-    public function init(App $app): void
+    public function init(Application $app): void
     {
         /**@var Config $config */
         $config = $this->container->get(Config::class);

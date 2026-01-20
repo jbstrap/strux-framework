@@ -25,7 +25,7 @@ abstract class Migration
         // we can grab it globally or expect it to be set.
 
         // However, the easiest way for generated files is to use the
-        // App container singleton pattern if available,
+        // Application container singleton pattern if available,
         // OR rely on the runner to set it.
 
         // Let's use the Container to fetch it cleanly:

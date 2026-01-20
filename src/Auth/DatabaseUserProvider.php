@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Strux\Auth;
 
-use Strux\Component\Config\Config;
 use RuntimeException;
+use Strux\Component\Config\Config;
 use Strux\Component\Model\Model;
 
 class DatabaseUserProvider implements UserProviderInterface
@@ -16,7 +16,7 @@ class DatabaseUserProvider implements UserProviderInterface
     {
         $this->model = $config->get('auth.providers.users.model')
             ?? $config->get('auth.sentinels.web.model')
-            ?? 'App\\Domain\\Identity\\Entity\\User';
+            ?? 'Application\\Domain\\Identity\\Entity\\User';
 
         if (!class_exists($this->model)) {
             throw new RuntimeException("Auth user model '{$this->model}' not found in configuration.");
