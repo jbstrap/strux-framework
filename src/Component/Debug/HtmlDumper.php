@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Strux\Component\Debug;
 
+use JetBrains\PhpStorm\NoReturn;
 use ReflectionClass;
 use stdClass;
 
@@ -12,24 +13,24 @@ class HtmlDumper
     private static int $maxDepth = 10;
     private static int $maxStringLength = 200;
     private static int $maxArrayElements = 50;
-    private static string $indentation = '  '; // Two spaces for indentation
-    private static ?string $theme = 'light'; // 'light' or 'dark'
+    private static string $indentation = '    ';
+    private static ?string $theme = 'light';
     private static bool $cssRendered = false;
 
     private function __construct()
     {
-    } // Static class
+    }
 
     public static function dump(...$vars): void
     {
         if (PHP_SAPI === 'cli') {
             foreach ($vars as $var) {
-                var_dump($var); // Fallback for CLI
+                var_dump($var);
             }
             return;
         }
 
-        echo self::renderCss(); // Ensure CSS is rendered once per request effectively
+        echo self::renderCss();
 
         foreach ($vars as $var) {
             echo '<div class="php-html-dumper">';
@@ -38,12 +39,12 @@ class HtmlDumper
         }
     }
 
-    public static function dd(...$vars): void
+    #[NoReturn] public static function dd(...$vars): void
     {
-        // ob_start(); // Start output buffering if you want to clear previous output
-        // debug_print_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS); // Optional: show backtrace
-        // $trace = ob_get_clean();
-        // echo '<pre>' . htmlspecialchars($trace) . '</pre>';
+        ob_start();
+        debug_print_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+        $trace = ob_get_clean();
+        echo '<pre>' . htmlspecialchars($trace) . '</pre>';
 
         self::dump(...$vars);
         die();
@@ -86,7 +87,7 @@ class HtmlDumper
     {
         $count = count($arr);
         if ($depth >= self::$maxDepth || $count === 0) {
-            return '<span class="php-dumper-array-keyword">array</span><span class="php-dumper-meta">(size=' . $count . ')</span>' . ($count > 0 ? ' <span class="php-dumper-punctuation">[]</span>' : ' <span class="php-dumper-punctuation">[]</span>');
+            return '<span class="php-dumper-array-keyword">array</span><span class="php-dumper-meta">(size=' . $count . ')</span>' . ' <span class="php-dumper-punctuation">[]</span>';
         }
 
         $output = '<span class="php-dumper-array-keyword">array</span><span class="php-dumper-meta">(size=' . $count . ')</span> <label class="php-dumper-toggle" for="' . $id . '">▼</label><input type="checkbox" id="' . $id . '" class="php-dumper-toggle-checkbox" checked><span class="php-dumper-punctuation">[</span><div class="php-dumper-collapsible">';
@@ -167,7 +168,7 @@ class HtmlDumper
 
     private static function renderCss(): string
     {
-        if (self::$cssRendered && PHP_SAPI !== 'cli') { // Only render once if not CLI
+        if (self::$cssRendered && PHP_SAPI !== 'cli') {
             return '';
         }
         self::$cssRendered = true;
@@ -289,7 +290,7 @@ class HtmlDumper
     {
         if (in_array(strtolower($theme), ['light', 'dark'])) {
             self::$theme = strtolower($theme);
-            self::$cssRendered = false; // Force CSS re-render if theme changes mid-request
+            self::$cssRendered = false;
         }
     }
 

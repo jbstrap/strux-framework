@@ -103,6 +103,8 @@ class AppRegistry extends ServiceRegistry
             $registry->build();
         } elseif (method_exists($registry, 'register')) {
             $registry->register();
+        } else {
+            throw new \RuntimeException("ServiceRegistry class {$registry} must implement a build() or register() method.");
         }
     }
 

@@ -190,6 +190,10 @@ class Application
 
         if (method_exists($registry, 'build')) {
             $registry->build();
+        } elseif (method_exists($registry, 'register')) {
+            $registry->register();
+        } else {
+            throw new \RuntimeException("ServiceRegistry class {$registryClass} must implement a build() or register() method.");
         }
 
         return $this;
