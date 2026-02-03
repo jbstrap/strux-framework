@@ -57,7 +57,7 @@ class Config implements ArrayAccess
             }
 
             // 2. Fallback to Class Name inference (Standard named classes)
-            $className = "Application\\Config\\{$filename}";
+            $className = "App\\Config\\{$filename}";
 
             if (class_exists($className)) {
                 $this->mergeConfigObject($key, new $className());

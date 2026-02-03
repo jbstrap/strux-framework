@@ -117,7 +117,6 @@ PHP;
             $namespace = $this->getNamespaceFromPath($filePath);
             $className = basename($name);
 
-            // Logic to guess table name (Pluralization)
             $tableName = Utils::getPluralName($className);
 
             $content = <<<PHP
@@ -147,9 +146,7 @@ PHP;
             echo "Entity created successfully: $filePath\n";
 
             if ($createMigration) {
-                // We need to require the file so the MigrationGenerator can reflect on the class
                 require_once $filePath;
-                // Note: You might need to adjust generateMigrations to accept the class FQN directly
                 $this->generateMigrations(['m' => $name]);
             }
 
@@ -693,7 +690,7 @@ PHP;
 
         if ($pos === false) {
             // Fallback for edge cases or testing
-            return 'Application';
+            return 'App';
         }
 
         // Get everything after src/
@@ -703,7 +700,7 @@ PHP;
         // Replace slashes with backslashes
         $ns = str_replace('/', '\\', $relativePath);
 
-        return "Application\\$ns";
+        return "App\\$ns";
     }
 
     private function ensureDirectoryExists(string $filePath): void

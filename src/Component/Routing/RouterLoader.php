@@ -27,7 +27,7 @@ readonly class RouterLoader
 {
     public function __construct(
         private Router             $router,
-        private ContainerInterface $container, // Maintained for potential future use
+        private ContainerInterface $container,
         private LoggerInterface    $logger
     )
     {
@@ -94,7 +94,7 @@ readonly class RouterLoader
                     $classPath = str_replace(DIRECTORY_SEPARATOR, '\\', $relativePath);
 
                     // 5. Prepend Application base namespace
-                    $fqcn = "Application\\" . $classPath;
+                    $fqcn = "App\\" . $classPath;
 
                     $classes[] = $fqcn;
                 }

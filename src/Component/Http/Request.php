@@ -23,6 +23,7 @@ class Request
      * @var ServerRequestInterface
      */
     private ServerRequestInterface $request;
+
     /**
      * @var SafeInput|null
      */
@@ -319,7 +320,6 @@ class Request
         return $this->request->getAttributes();
     }
 
-
     /**
      * Check if the request is an AJAX request (common check).
      *
@@ -384,7 +384,7 @@ class Request
     }
 
     /**
-     * @return object|mixed|null
+     * @return object|null
      */
     public function getJson(): ?object
     {

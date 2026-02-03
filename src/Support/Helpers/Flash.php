@@ -6,9 +6,9 @@ namespace Strux\Support\Helpers;
 
 use Strux\Component\Session\SessionInterface;
 
-class Flash implements FlashServiceInterface
+class Flash implements FlashInterface
 {
-    private string $sessionKeyPrefix = '_flash.'; // To namespace flash messages
+    private string $sessionKeyPrefix = '_flash.';
 
     public function __construct(private readonly SessionInterface $session)
     {
@@ -16,7 +16,6 @@ class Flash implements FlashServiceInterface
 
     public function get(string $key, mixed $default = null): mixed
     {
-        // Uses the pull method from SessionInterface to get and then remove
         return $this->session->pull($this->sessionKeyPrefix . $key, $default);
     }
 
@@ -38,16 +37,18 @@ class Flash implements FlashServiceInterface
             foreach ($key as $messageKey => $typeOrMessageKey) {
                 $currentType = $defaultType;
 
-                if (is_string($messageKey)) { // Associative array: ['message_key' => 'type']
+                if (is_string($messageKey)) {
+                    // Associative array: ['message_key' => 'type']
                     $currentKey = $messageKey;
                     $currentType = is_string($typeOrMessageKey) ? $typeOrMessageKey : $defaultType;
-                } else { // Indexed array: ['message_key1', 'message_key2']
+                } else {
+                    // Indexed array: ['message_key1', 'message_key2']
                     $currentKey = $typeOrMessageKey;
-                    // currentType remains $defaultType
                 }
                 $output .= $this->renderMessageHtml($currentKey, $currentType, $withAlert);
             }
-        } else { // Single key string
+        } else {
+            // Single key string
             $output = $this->renderMessageHtml($key, $defaultType, $withAlert);
         }
         return $output;
@@ -59,8 +60,8 @@ class Flash implements FlashServiceInterface
     private function renderMessageHtml(string $key, string $type, bool $withAlert): string
     {
         $htmlOutput = '';
-        if ($this->has($key)) { // Check before getting, as get() removes it
-            $messages = (array)$this->get($key); // Now get and remove
+        if ($this->has($key)) {
+            $messages = (array)$this->get($key);
 
             if (!empty($messages)) {
                 if ($withAlert) {

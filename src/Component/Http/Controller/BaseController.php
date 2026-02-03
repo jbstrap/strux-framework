@@ -22,7 +22,7 @@ use Strux\Component\Routing\Router;
 use Strux\Component\Session\SessionInterface;
 use Strux\Component\View\ViewInterface;
 use Strux\Support\ContainerBridge;
-use Strux\Support\Helpers\FlashServiceInterface;
+use Strux\Support\Helpers\FlashInterface;
 
 /**
  * Class BaseController
@@ -36,7 +36,7 @@ abstract class BaseController
     protected ?LoggerInterface $logger = null;
     protected ?ViewInterface $view = null;
     protected ?EventDispatcherInterface $event = null;
-    protected ?FlashServiceInterface $flash = null;
+    protected ?FlashInterface $flash = null;
     protected ?ResponseFactoryInterface $responseFactory = null;
     protected ?AuthManager $authManager = null;
 
@@ -54,7 +54,7 @@ abstract class BaseController
         ?LoggerInterface          $logger = null,
         ?ViewInterface            $view = null,
         ?EventDispatcherInterface $event = null,
-        ?FlashServiceInterface    $flash = null,
+        ?FlashInterface           $flash = null,
         ?AuthManager              $authManager = null
     )
     {
@@ -88,9 +88,9 @@ abstract class BaseController
             ? $this->container->get(EventDispatcherInterface::class)
             : ContainerBridge::resolve(EventDispatcherInterface::class)
         );
-        $this->flash = $flash ?? ($this->container->has(FlashServiceInterface::class)
-            ? $this->container->get(FlashServiceInterface::class)
-            : ContainerBridge::resolve(FlashServiceInterface::class)
+        $this->flash = $flash ?? ($this->container->has(FlashInterface::class)
+            ? $this->container->get(FlashInterface::class)
+            : ContainerBridge::resolve(FlashInterface::class)
         );
         $this->authManager = $authManager ?? ($this->container->has(AuthManager::class)
             ? $this->container->get(AuthManager::class)
@@ -112,7 +112,7 @@ abstract class BaseController
     protected function json(mixed $data, int $status = 200, array $headers = [], int $encodingOptions = 0): Response
     {
         $response = $this->createResponse('', $status, $headers);
-        return $response->json($data, $status, $headers, $encodingOptions); // json method now on Application\Core\Response
+        return $response->json($data, $status, $headers, $encodingOptions);
     }
 
     /**
@@ -121,7 +121,7 @@ abstract class BaseController
     protected function redirect(string $uri, int $status = 302): Response
     {
         $response = $this->createResponse('', $status);
-        return $response->redirect($uri, $status); // redirect method now on Application\Core\Response
+        return $response->redirect($uri, $status);
     }
 
     /**

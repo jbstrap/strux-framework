@@ -10,14 +10,14 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Strux\Auth\AuthManager;
-use Strux\Support\Helpers\FlashServiceInterface;
+use Strux\Support\Helpers\FlashInterface;
 
 readonly class EnsureEmailIsVerified implements MiddlewareInterface
 {
     public function __construct(
         private AuthManager              $auth,
         private ResponseFactoryInterface $responseFactory,
-        private FlashServiceInterface    $flash
+        private FlashInterface           $flash
     )
     {
     }

@@ -17,7 +17,7 @@ class ViewRegistry extends ServiceRegistry
 {
     public function build(): void
     {
-        $this->container->singleton(ViewInterface::class, function (ContainerInterface $c) {
+        $this->container->singleton(ViewInterface::class, static function (ContainerInterface $c) {
             $config = $c->get(Config::class);
 
             $engineType = $config->get('view.engine', 'none');

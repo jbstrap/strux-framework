@@ -22,13 +22,17 @@ class EventRegistry extends ServiceRegistry
 {
     public function build(): void
     {
-        $this->container->singleton(ListenerProviderInterface::class, function (ContainerInterface $c) {
-            return new ListenerProvider();
-        });
+        $this->container->singleton(
+            ListenerProviderInterface::class,
+            static fn() => new ListenerProvider()
+        );
 
-        $this->container->singleton(EventDispatcher::class, function (ContainerInterface $c) {
-            return new EventDispatcher($c->get(ListenerProviderInterface::class));
-        });
+        $this->container->singleton(
+            EventDispatcher::class,
+            static fn(ContainerInterface $c) => new EventDispatcher(
+                $c->get(ListenerProviderInterface::class)
+            )
+        );
 
         $this->container->bind(EventDispatcherInterface::class, EventDispatcher::class);
     }

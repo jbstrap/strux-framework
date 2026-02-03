@@ -19,7 +19,7 @@ class LogRegistry extends ServiceRegistry
 {
     public function build(): void
     {
-        $this->container->singleton(LoggerInterface::class, function (ContainerInterface $c) {
+        $this->container->singleton(LoggerInterface::class, static function (ContainerInterface $c) {
             /**@var Config $config */
             $config = $c->get(Config::class);
             $logger = new Logger($config->get('app.name', 'app'));

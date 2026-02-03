@@ -205,7 +205,7 @@ class MigrationGenerator
                 $filePath = $file->getRealPath();
                 $relativePath = substr($filePath, strlen($this->srcPath) + 1); // Remove .../src/
                 $classPath = str_replace(['/', '.php'], ['\\', ''], $relativePath);
-                $className = "Application\\" . $classPath;
+                $className = "App\\" . $classPath;
 
                 echo "Scanning model: $className\n";
                 if (class_exists($className)) {

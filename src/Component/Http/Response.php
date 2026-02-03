@@ -58,7 +58,6 @@ class Response
         return $this->setHeader($name, $value, false);
     }
 
-    // ... (Your other methods like json(), redirect(), etc., remain the same) ...
     public function json(mixed $data, int $status = 200, array $headers = [], int $options = 0): self
     {
         $this->setStatusCode($status);

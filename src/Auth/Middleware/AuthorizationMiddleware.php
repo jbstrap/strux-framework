@@ -23,14 +23,14 @@ use Strux\Component\Config\Config;
 use Strux\Component\Exceptions\AuthorizationException;
 use Strux\Component\Routing\Router;
 use Strux\Support\ContainerBridge;
-use Strux\Support\Helpers\FlashServiceInterface;
+use Strux\Support\Helpers\FlashInterface;
 
 class AuthorizationMiddleware implements MiddlewareInterface
 {
     private AuthManager $authManager;
     private ResponseFactoryInterface $responseFactory;
     private Router $router;
-    private FlashServiceInterface $flash;
+    private FlashInterface $flash;
     private ?LoggerInterface $logger;
     private string $loginRouteName;
 
@@ -38,9 +38,9 @@ class AuthorizationMiddleware implements MiddlewareInterface
         AuthManager              $authManager,
         ResponseFactoryInterface $responseFactory,
         Router                   $router,
-        FlashServiceInterface    $flash,
-        ?string                   $loginRouteName = null,
-        ?string                   $nextParameter = null,
+        FlashInterface           $flash,
+        ?string                  $loginRouteName = null,
+        ?string                  $nextParameter = null,
         ?LoggerInterface         $logger = null
     )
     {
@@ -59,7 +59,7 @@ class AuthorizationMiddleware implements MiddlewareInterface
      * @throws AuthorizationException
      */
     public function process(
-        ServerRequestInterface $request,
+        ServerRequestInterface  $request,
         RequestHandlerInterface $handler): ResponseInterface
     {
         if ($this->authManager->sentinel('web')->check()) {
@@ -98,7 +98,7 @@ class AuthorizationMiddleware implements MiddlewareInterface
 
         $this->flash->set('error', 'You must be logged in to access this page.');
 
-        /** @var Config $config  */
+        /** @var Config $config */
         $config = ContainerBridge::resolve(Config::class);
 
         $this->loginRouteName = $this->loginRouteName
@@ -110,7 +110,7 @@ class AuthorizationMiddleware implements MiddlewareInterface
         try {
             $currentPath = (!empty($request->getUri()->getPath()) && $request->getUri()->getPath() !== '/')
                 ? $request->getUri()->getPath()
-                : '' ;
+                : '';
 
             if (str_starts_with($this->loginRouteName, '/')) {
                 if (!empty($currentPath)) {

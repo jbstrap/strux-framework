@@ -11,7 +11,7 @@ class Callback implements RulesInterface
     private Closure $callback;
     private ?string $message;
 
-    public function __construct(callable $callback, ?string $message)
+    public function __construct(callable $callback, ?string $message = null)
     {
         $this->callback = $callback instanceof Closure ? $callback : $callback(...);
         $this->message = $message ?? 'Custom validation failed.';

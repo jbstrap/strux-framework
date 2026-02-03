@@ -1,6 +1,8 @@
 <?php
 
-namespace Strux\Foundation;
+declare(strict_types=1);
+
+namespace Strux\Bootstrapping;
 
 use Dotenv\Dotenv;
 use Dotenv\Exception\InvalidPathException;
@@ -11,6 +13,8 @@ use Psr\Container\NotFoundExceptionInterface;
 use ReflectionException;
 use Strux\Bootstrapping\Registry\AppRegistry;
 use Strux\Component\Config\Config;
+use Strux\Foundation\Application;
+use Strux\Foundation\Container;
 use Strux\Support\ContainerBridge;
 
 /**

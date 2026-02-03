@@ -31,7 +31,8 @@ use Strux\Component\Routing\Router;
 use Strux\Component\Session\SessionInterface;
 use Strux\Component\View\ViewInterface;
 use Strux\Foundation\Application;
-use Strux\Support\Helpers\FlashServiceInterface;
+use Strux\Support\Helpers\FlashInterface;
+use Throwable;
 use Tuupola\Middleware\CorsMiddleware;
 
 class MiddlewareRegistry extends ServiceRegistry
@@ -39,15 +40,17 @@ class MiddlewareRegistry extends ServiceRegistry
     /**
      * @throws ContainerExceptionInterface
      * @throws NotFoundExceptionInterface
+     * @throws Throwable
      */
     public function build(): void
     {
         $this->buildErrorHandling();
 
-        $this->container->singleton(RequestLoggerMiddleware::class, function (ContainerInterface $c) {
-            return new RequestLoggerMiddleware($c->get(LoggerInterface::class));
-        });
-        $this->container->singleton(MethodOverrideMiddleware::class, function (ContainerInterface $c) {
+        $this->container->singleton(
+            RequestLoggerMiddleware::class,
+            static fn(ContainerInterface $c) => new RequestLoggerMiddleware($c->get(LoggerInterface::class))
+        );
+        $this->container->singleton(MethodOverrideMiddleware::class, static function (ContainerInterface $c) {
             return (new MethodOverrideMiddleware(
                 $c->get(ResponseFactoryInterface::class),
                 $c->get(LoggerInterface::class)
@@ -57,51 +60,56 @@ class MiddlewareRegistry extends ServiceRegistry
                 ->queryParameter('_method')
                 ->parsedBodyParameter('_method');
         });
-        $this->container->singleton(CsrfProtectionMiddleware::class, function (ContainerInterface $c) {
-            return new CsrfProtectionMiddleware(
+        $this->container->singleton(
+            CsrfProtectionMiddleware::class,
+            static fn(ContainerInterface $c) => new CsrfProtectionMiddleware(
                 $c->get(SessionInterface::class),
                 $c->get(LoggerInterface::class),
                 $c->get(Config::class)->get('csrf', [])
-            );
-        });
-        $this->container->singleton(AuthorizationMiddleware::class, function (ContainerInterface $c) {
-            return new AuthorizationMiddleware(
+            )
+        );
+        $this->container->singleton(
+            AuthorizationMiddleware::class,
+            static fn(ContainerInterface $c) => new AuthorizationMiddleware(
                 $c->get(AuthManager::class),
                 $c->get(ResponseFactoryInterface::class),
                 $c->get(Router::class),
-                $c->get(FlashServiceInterface::class),
+                $c->get(FlashInterface::class),
                 $c->get(Config::class)->get('auth.defaults.redirect_to'),
                 $c->get(Config::class)->get('auth.defaults.next_parameter'),
                 $c->get(LoggerInterface::class)
-            );
-        });
-        $this->container->singleton(ApiAuthMiddleware::class, function (ContainerInterface $c) {
-            return new ApiAuthMiddleware(
+            )
+        );
+        $this->container->singleton(
+            ApiAuthMiddleware::class,
+            static fn(ContainerInterface $c) => new ApiAuthMiddleware(
                 $c->get(AuthManager::class),
                 $c->get(ResponseFactoryInterface::class),
                 $c->get(LoggerInterface::class)
-            );
-        });
-        $this->container->singleton(GuestMiddleware::class, function (ContainerInterface $c) {
-            return new GuestMiddleware(
+            )
+        );
+        $this->container->singleton(
+            GuestMiddleware::class,
+            static fn(ContainerInterface $c) => new GuestMiddleware(
                 $c->get(AuthManager::class),
                 $c->get(ResponseFactoryInterface::class),
                 $c->get(Router::class),
-                $c->get(FlashServiceInterface::class),
+                $c->get(FlashInterface::class),
                 $c->get(Config::class),
                 $c->get(LoggerInterface::class)
-            );
-        });
-        $this->container->singleton(MaintenanceModeMiddleware::class, function (ContainerInterface $c) {
-            return new MaintenanceModeMiddleware(
+            )
+        );
+        $this->container->singleton(
+            MaintenanceModeMiddleware::class,
+            static fn(ContainerInterface $c) => new MaintenanceModeMiddleware(
                 $c->get(ResponseFactoryInterface::class),
                 $c->get(LoggerInterface::class),
                 $c->get(ViewInterface::class),
                 $c->get(Config::class)->get('maintenance', [])
-            );
-        });
+            )
+        );
 
-        $this->container->singleton(CorsMiddleware::class, function (ContainerInterface $c) {
+        $this->container->singleton(CorsMiddleware::class, static function (ContainerInterface $c) {
             $corsConfig = $c->get(Config::class)->get('cors', []);
             return new CorsMiddleware(
                 array_merge($corsConfig, [
@@ -118,12 +126,12 @@ class MiddlewareRegistry extends ServiceRegistry
             );
         });
 
-        $this->container->singleton(PoweredByMiddleware::class, function (ContainerInterface $c) {
+        $this->container->singleton(PoweredByMiddleware::class, static function (ContainerInterface $c) {
             $config = $c->get(Config::class)->get('headers.x_powered_by', []);
             return new PoweredByMiddleware($config);
         });
 
-        $this->container->singleton(ConvertEmptyStringsToNull::class, fn() => new ConvertEmptyStringsToNull());
+        $this->container->singleton(ConvertEmptyStringsToNull::class, static fn() => new ConvertEmptyStringsToNull());
     }
 
     /**
@@ -155,33 +163,34 @@ class MiddlewareRegistry extends ServiceRegistry
     /**
      * @throws ContainerExceptionInterface
      * @throws NotFoundExceptionInterface
+     * @throws Throwable
      */
     private function buildErrorHandling(): void
     {
         try {
-            $appDebug = $this->container->get(Config::class)->get('app.debug', false);
-            $this->container->singleton(HtmlFormatter::class, function (ContainerInterface $c) use ($appDebug) {
+            $appDebug = $this->config->get('app.debug', false, 'bool');
+            $this->container->singleton(HtmlFormatter::class, static function (ContainerInterface $c) use ($appDebug) {
                 return new HtmlFormatter(
                     $c->get(ResponseFactoryInterface::class),
                     $c->get(StreamFactoryInterface::class),
                     $appDebug
                 );
             });
-            $this->container->singleton(JsonFormatter::class, function (ContainerInterface $c) use ($appDebug) {
+            $this->container->singleton(JsonFormatter::class, static function (ContainerInterface $c) use ($appDebug) {
                 return new JsonFormatter(
                     $c->get(ResponseFactoryInterface::class),
                     $c->get(StreamFactoryInterface::class),
                     $appDebug
                 );
             });
-            $this->container->singleton(PlainFormatter::class, function (ContainerInterface $c) use ($appDebug) {
+            $this->container->singleton(PlainFormatter::class, static function (ContainerInterface $c) use ($appDebug) {
                 return new PlainFormatter(
                     $c->get(ResponseFactoryInterface::class),
                     $c->get(StreamFactoryInterface::class),
                     $appDebug
                 );
             });
-            $this->container->singleton(ErrorHandlerMiddleware::class, function (ContainerInterface $c) {
+            $this->container->singleton(ErrorHandlerMiddleware::class, static function (ContainerInterface $c) {
                 return new ErrorHandlerMiddleware(
                     [
                         $c->get(HtmlFormatter::class),
@@ -192,7 +201,7 @@ class MiddlewareRegistry extends ServiceRegistry
                     $c->get(LoggerInterface::class)
                 );
             });
-        } catch (NotFoundExceptionInterface|ContainerExceptionInterface $e) {
+        } catch (Throwable $e) {
             throw new $e;
         }
     }

@@ -6,7 +6,7 @@ namespace Strux\Component\Http;
 
 use Strux\Component\Config\Config;
 
-class Cookie
+class Cookie implements CookieInterface
 {
     private Config $config;
 

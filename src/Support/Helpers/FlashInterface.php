@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Strux\Support\Helpers;
 
-interface FlashServiceInterface
+interface FlashInterface
 {
     /**
      * Set a flash message.

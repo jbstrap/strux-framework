@@ -16,7 +16,7 @@ class DatabaseUserProvider implements UserProviderInterface
     {
         $this->model = $config->get('auth.providers.users.model')
             ?? $config->get('auth.sentinels.web.model')
-            ?? 'Application\\Domain\\Identity\\Entity\\User';
+            ?? 'App\\Domain\\Identity\\Entity\\User';
 
         if (!class_exists($this->model)) {
             throw new RuntimeException("Auth user model '{$this->model}' not found in configuration.");

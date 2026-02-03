@@ -54,7 +54,7 @@ if ($validator->isValid()) {
 
 Rules may be defined using:
 
-* **String syntax** (e.g. `'minlength:5'`)
+* **String syntax** (e.g. `'minLength:5'`)
 * **Object syntax** (e.g. `new MinLength(5)`)
 
 | Rule         | String Syntax       | Object Syntax         | Description                   |
@@ -67,9 +67,9 @@ Rules may be defined using:
 | Equal        | `'equal:val'`       | `new Equal('val')`    | Matches a specific value      |
 | In           | `'in:a,b,c'`        | `new In('a','b')`     | One of the allowed values     |
 | Integer      | `'integer'`         | `new Integer()`       | Valid integer                 |
-| MaxLength    | `'maxlength:10'`    | `new MaxLength(10)`   | Maximum string length         |
-| MinLength    | `'minlength:5'`     | `new MinLength(5)`    | Minimum string length         |
-| NotIn        | `'notin:a,b'`       | `new NotIn('a','b')`  | Must NOT be one of the values |
+| MaxLength    | `'maxLength:10'`    | `new MaxLength(10)`   | Maximum string length         |
+| MinLength    | `'minLength:5'`     | `new MinLength(5)`    | Minimum string length         |
+| NotIn        | `'notIn:a,b'`       | `new NotIn('a','b')`  | Must NOT be one of the values |
 | Numeric      | `'numeric'`         | `new Numeric()`       | Numeric values only           |
 | Password     | `'password'`        | `new Password()`      | Strong password validation    |
 | Regex        | `'regex:/pattern/'` | `new Regex('/patt/')` | Regular expression match      |

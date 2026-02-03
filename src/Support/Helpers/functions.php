@@ -14,7 +14,7 @@ use Strux\Component\Routing\Router;
 use Strux\Component\Session\SessionInterface;
 use Strux\Component\View\ViewInterface;
 use Strux\Support\ContainerBridge;
-use Strux\Support\Helpers\FlashServiceInterface;
+use Strux\Support\Helpers\FlashInterface;
 use Strux\Support\Helpers\SafeHtml;
 
 if (!function_exists('container')) {
@@ -63,8 +63,8 @@ if (!function_exists('view')) {
         if (ContainerBridge::has(Auth::class)) {
             $data['auth'] = ContainerBridge::get(Auth::class);
         }
-        if (ContainerBridge::has(FlashServiceInterface::class)) {
-            $data['flash'] = ContainerBridge::get(FlashServiceInterface::class);
+        if (ContainerBridge::has(FlashInterface::class)) {
+            $data['flash'] = ContainerBridge::get(FlashInterface::class);
         }
 
 
@@ -92,8 +92,8 @@ if (!function_exists('redirectWith')) {
         array  $routeParams = []
     ): Response
     {
-        /** @var FlashServiceInterface $flash */
-        $flash = ContainerBridge::get(FlashServiceInterface::class);
+        /** @var FlashInterface $flash */
+        $flash = ContainerBridge::get(FlashInterface::class);
         if ($flash) {
             foreach ($messages as $type => $message) {
                 $flash->set((string)$type, $message);
@@ -252,7 +252,6 @@ if (!function_exists('trait_uses_recursive')) {
     }
 }
 
-
 if (!function_exists('class_basename')) {
     /**
      * Get the class "basename" of the given object / class.
@@ -319,7 +318,6 @@ if (!function_exists('storage_path')) {
      */
     function storage_path(string $path = ''): string
     {
-        // Adjust based on your framework's root path constant
         $root = defined('ROOT_PATH') ? ROOT_PATH : dirname(__DIR__, 2);
         return rtrim($root, '/\\') . '/storage/' . ltrim($path, '/\\');
     }
@@ -337,7 +335,6 @@ if (!function_exists('storage_url')) {
         if ($storageBaseUrl === null) {
             try {
                 if (class_exists(ContainerBridge::class) && ContainerBridge::has(Config::class)) {
-                    // Fetch the URL from the 'web' disk config
                     $config = ContainerBridge::get(Config::class);
                     $storageBaseUrl = $config->get('filesystems.disks.web.url');
                 }
@@ -345,7 +342,6 @@ if (!function_exists('storage_url')) {
                 // Fallback if container/config fails
             }
 
-            // Fallback default if config is missing
             if (empty($storageBaseUrl)) {
                 $storageBaseUrl = url('storage');
             }
@@ -479,9 +475,9 @@ if (!function_exists('auth')) {
 }
 
 if (!function_exists('flash')) {
-    function flash(): FlashServiceInterface
+    function flash(): FlashInterface
     {
-        return ContainerBridge::get(FlashServiceInterface::class);
+        return ContainerBridge::get(FlashInterface::class);
     }
 }
 

@@ -65,16 +65,8 @@ class SessionManager implements SessionInterface
                 $pdo = $this->container->get(PDO::class);
                 $table = $this->config->get('session.table', '_sessions');
 
-                // Check if table exists to avoid fatal error loop
                 if (!$this->tableExists($pdo, $table)) {
-                    // Use ANSI escape code for Yellow/Orange text
-                    // \033[33m = Yellow text
-                    // \033[0m  = Reset to default
                     $msg = "\033[33mSession Warning: Database table '$table' does not exist. Run 'php console session:init'. Falling back to file session.\033[0m";
-
-                    // Write directly to stderr or stdout, so it appears in CLI output immediately
-                    // error_log typically goes to web server logs or php_error.log
-                    // but in CLI context (if this runs there) or dev server, this helps visibility.
 
                     if (PHP_SAPI === 'cli-server' || PHP_SAPI === 'cli') {
                         file_put_contents('php://stderr', $msg . PHP_EOL);
@@ -103,7 +95,6 @@ class SessionManager implements SessionInterface
 
             session_name($this->config->get('session.cookie', 'strux_session'));
 
-            // Prevent PHP from sending its own cache-related headers.
             session_cache_limiter('');
 
             @session_start();

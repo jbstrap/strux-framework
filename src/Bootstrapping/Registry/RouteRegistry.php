@@ -21,25 +21,31 @@ class RouteRegistry extends ServiceRegistry
 {
     public function build(): void
     {
-        $this->container->singleton(Router::class, function (ContainerInterface $c) {
-            return new Router($c->get(ServerRequestInterface::class));
-        });
+        $this->container->singleton(
+            Router::class,
+            static fn(ContainerInterface $c) => new Router($c->get(ServerRequestInterface::class))
+        );
 
-        $this->container->singleton(RouterLoader::class, function (ContainerInterface $c) {
-            return new RouterLoader($c->get(Router::class), $c, $c->get(LoggerInterface::class));
-        });
+        $this->container->singleton(
+            RouterLoader::class,
+            static fn(ContainerInterface $c) => new RouterLoader(
+                $c->get(Router::class), $c, $c->get(LoggerInterface::class)
+            )
+        );
 
-        $this->container->singleton(ParameterResolver::class, function (ContainerInterface $c) {
-            return new ParameterResolver($c);
-        });
+        $this->container->singleton(
+            ParameterResolver::class,
+            static fn(ContainerInterface $c) => new ParameterResolver($c)
+        );
 
-        $this->container->singleton(RouteDispatcher::class, function (ContainerInterface $c) {
-            return new RouteDispatcher(
+        $this->container->singleton(
+            RouteDispatcher::class,
+            static fn(ContainerInterface $c) => new RouteDispatcher(
                 $c,
                 $c->get(Router::class),
                 $c->get(ParameterResolver::class)
-            );
-        });
+            )
+        );
     }
 
     /**
@@ -54,7 +60,7 @@ class RouteRegistry extends ServiceRegistry
         $routerLoader = $this->container->get(RouterLoader::class);
         $config = $this->container->get(Config::class);
 
-        $legacyRoutesPath = ROOT_PATH . '/etc/routes/web.php';
+        $legacyRoutesPath = $app->getRootPath() . '/etc/routes/web.php';
         if (file_exists($legacyRoutesPath)) {
             $webRoutes = require $legacyRoutesPath;
             if (is_callable($webRoutes)) {
@@ -62,16 +68,16 @@ class RouteRegistry extends ServiceRegistry
             }
         }
 
-        $mode = $config->get('app.mode', 'domain');
+        $mode = $config->get('app.mode');
 
         if ($mode === 'standard') {
             // --- Standard Mode Structure ---
-            $webControllerDir = ROOT_PATH . '/src/Controller';
-            $apiControllerDir = ROOT_PATH . '/src/Controller/Api';
+            $webControllerDir = $app->getRootPath() . '/src/Controller';
+            $apiControllerDir = $app->getRootPath() . '/src/Controller/Api';
         } else {
             // --- Domain Mode Structure (Default) ---
-            $webControllerDir = ROOT_PATH . '/src/Http/Controllers/Web';
-            $apiControllerDir = ROOT_PATH . '/src/Http/Controllers/Api';
+            $webControllerDir = $app->getRootPath() . '/src/Http/Controllers/Web';
+            $apiControllerDir = $app->getRootPath() . '/src/Http/Controllers/Api';
         }
 
         // 2. Auto-Discover Attribute-Based Web Controllers
