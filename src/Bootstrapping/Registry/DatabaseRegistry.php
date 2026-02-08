@@ -17,8 +17,8 @@ class DatabaseRegistry extends ServiceRegistry
         $this->container->singleton(
             Database::class,
             static fn(ContainerInterface $c) => new Database(
-                $c->get(Config::class),
-                $c->get(LoggerInterface::class)
+                config: $c->get(Config::class),
+                logger: $c->get(LoggerInterface::class)
             )
         );
         $this->container->singleton(

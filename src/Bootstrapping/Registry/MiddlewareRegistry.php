@@ -48,12 +48,14 @@ class MiddlewareRegistry extends ServiceRegistry
 
         $this->container->singleton(
             RequestLoggerMiddleware::class,
-            static fn(ContainerInterface $c) => new RequestLoggerMiddleware($c->get(LoggerInterface::class))
+            static fn(ContainerInterface $c) => new RequestLoggerMiddleware(
+                logger: $c->get(LoggerInterface::class)
+            )
         );
         $this->container->singleton(MethodOverrideMiddleware::class, static function (ContainerInterface $c) {
             return (new MethodOverrideMiddleware(
-                $c->get(ResponseFactoryInterface::class),
-                $c->get(LoggerInterface::class)
+                responseFactory: $c->get(ResponseFactoryInterface::class),
+                logger: $c->get(LoggerInterface::class)
             ))
                 ->getMethods(['HEAD', 'CONNECT', 'TRACE', 'OPTIONS'])
                 ->postMethods(['PATCH', 'PUT', 'DELETE', 'COPY', 'LOCK', 'UNLOCK'])
@@ -63,58 +65,61 @@ class MiddlewareRegistry extends ServiceRegistry
         $this->container->singleton(
             CsrfProtectionMiddleware::class,
             static fn(ContainerInterface $c) => new CsrfProtectionMiddleware(
-                $c->get(SessionInterface::class),
-                $c->get(LoggerInterface::class),
-                $c->get(Config::class)->get('csrf', [])
+                session: $c->get(SessionInterface::class),
+                logger: $c->get(LoggerInterface::class),
+                config: $c->get(Config::class)->get('csrf', [])
             )
         );
         $this->container->singleton(
             AuthorizationMiddleware::class,
             static fn(ContainerInterface $c) => new AuthorizationMiddleware(
-                $c->get(AuthManager::class),
-                $c->get(ResponseFactoryInterface::class),
-                $c->get(Router::class),
-                $c->get(FlashInterface::class),
-                $c->get(Config::class)->get('auth.defaults.redirect_to'),
-                $c->get(Config::class)->get('auth.defaults.next_parameter'),
-                $c->get(LoggerInterface::class)
+                authManager: $c->get(AuthManager::class),
+                responseFactory: $c->get(ResponseFactoryInterface::class),
+                router: $c->get(Router::class),
+                flash: $c->get(FlashInterface::class),
+                loginRouteName: $c->get(Config::class)->get('auth.defaults.redirect_to'),
+                nextParameter: $c->get(Config::class)->get('auth.defaults.next_parameter'),
+                logger: $c->get(LoggerInterface::class)
             )
         );
         $this->container->singleton(
             ApiAuthMiddleware::class,
             static fn(ContainerInterface $c) => new ApiAuthMiddleware(
-                $c->get(AuthManager::class),
-                $c->get(ResponseFactoryInterface::class),
-                $c->get(LoggerInterface::class)
+                authManager: $c->get(AuthManager::class),
+                responseFactory: $c->get(ResponseFactoryInterface::class),
+                logger: $c->get(LoggerInterface::class)
             )
         );
         $this->container->singleton(
             GuestMiddleware::class,
             static fn(ContainerInterface $c) => new GuestMiddleware(
-                $c->get(AuthManager::class),
-                $c->get(ResponseFactoryInterface::class),
-                $c->get(Router::class),
-                $c->get(FlashInterface::class),
-                $c->get(Config::class),
-                $c->get(LoggerInterface::class)
+                authManager: $c->get(AuthManager::class),
+                responseFactory: $c->get(ResponseFactoryInterface::class),
+                router: $c->get(Router::class),
+                flash: $c->get(FlashInterface::class),
+                config: $c->get(Config::class),
+                logger: $c->get(LoggerInterface::class)
             )
         );
         $this->container->singleton(
             MaintenanceModeMiddleware::class,
             static fn(ContainerInterface $c) => new MaintenanceModeMiddleware(
-                $c->get(ResponseFactoryInterface::class),
-                $c->get(LoggerInterface::class),
-                $c->get(ViewInterface::class),
-                $c->get(Config::class)->get('maintenance', [])
+                responseFactory: $c->get(ResponseFactoryInterface::class),
+                logger: $c->get(LoggerInterface::class),
+                view: $c->get(ViewInterface::class),
+                config: $c->get(Config::class)->get('maintenance', [])
             )
         );
 
         $this->container->singleton(CorsMiddleware::class, static function (ContainerInterface $c) {
             $corsConfig = $c->get(Config::class)->get('cors', []);
             return new CorsMiddleware(
-                array_merge($corsConfig, [
+                options: array_merge($corsConfig, [
                     "logger" => $c->get(LoggerInterface::class),
-                    "error" => function (ServerRequestInterface $request, ResponseInterface $response, $args) {
+                    "error" => function (
+                        ServerRequestInterface $request,
+                        ResponseInterface      $response, $args
+                    ) {
                         $data["status"] = "error";
                         $data["message"] = $args["message"];
                         return $response
@@ -126,12 +131,18 @@ class MiddlewareRegistry extends ServiceRegistry
             );
         });
 
-        $this->container->singleton(PoweredByMiddleware::class, static function (ContainerInterface $c) {
-            $config = $c->get(Config::class)->get('headers.x_powered_by', []);
-            return new PoweredByMiddleware($config);
-        });
+        $this->container->singleton(
+            PoweredByMiddleware::class,
+            static function (ContainerInterface $c) {
+                $config = $c->get(Config::class)->get('headers.x_powered_by', []);
+                return new PoweredByMiddleware(config: $config);
+            }
+        );
 
-        $this->container->singleton(ConvertEmptyStringsToNull::class, static fn() => new ConvertEmptyStringsToNull());
+        $this->container->singleton(
+            ConvertEmptyStringsToNull::class,
+            static fn() => new ConvertEmptyStringsToNull()
+        );
     }
 
     /**

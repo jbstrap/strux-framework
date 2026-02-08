@@ -10,19 +10,19 @@ class TokenSentinel implements SentinelInterface
 {
     private ?object $user = null;
     private bool $userLoaded = false;
-    private ServerRequestInterface $request;
     private JwtService $jwtService;
     private UserProviderInterface $provider;
+    private ServerRequestInterface $request;
 
     public function __construct(
-        ServerRequestInterface $request,
         JwtService             $jwtService,
-        UserProviderInterface  $provider
+        UserProviderInterface  $provider,
+        ServerRequestInterface $request
     )
     {
-        $this->request = $request;
         $this->jwtService = $jwtService;
         $this->provider = $provider;
+        $this->request = $request;
     }
 
     public function user(): ?object

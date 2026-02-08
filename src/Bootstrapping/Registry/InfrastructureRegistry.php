@@ -6,6 +6,8 @@ namespace Strux\Bootstrapping\Registry;
 
 use PDO;
 use Psr\Container\ContainerInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
+use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Psr\SimpleCache\CacheInterface;
 use Strux\Component\Cache\Cache;
@@ -17,6 +19,8 @@ use Strux\Component\Mail\MailerInterface;
 use Strux\Component\Queue\Queue;
 use Strux\Component\Session\SessionInterface;
 use Strux\Component\Session\SessionManager;
+use Strux\Component\Validation\Validator;
+use Strux\Component\Validation\ValidatorInterface;
 use Strux\Component\View\ViewInterface;
 use Strux\Support\Helpers\Flash;
 use Strux\Support\Helpers\FlashInterface;
@@ -28,43 +32,59 @@ class InfrastructureRegistry extends ServiceRegistry
         $this->container->singleton(
             SessionInterface::class,
             static fn(ContainerInterface $c) => new SessionManager(
-                $c->get(Config::class),
-                $c
+                config: $c->get(Config::class),
+                container: $c
             )
         );
 
         $this->container->singleton(
             CookieInterface::class,
-            static fn(ContainerInterface $c) => new Cookie($c->get(Config::class))
+            static fn(ContainerInterface $c) => new Cookie(
+                config: $c->get(Config::class)
+            )
         );
 
         $this->container->singleton(
             FlashInterface::class,
-            static fn(ContainerInterface $c) => new Flash($c->get(SessionInterface::class))
+            static fn(ContainerInterface $c) => new Flash(
+                session: $c->get(SessionInterface::class)
+            )
         );
 
         $this->container->singleton(
             CacheInterface::class,
             static fn(ContainerInterface $c) => new Cache(
-                $c->get(Config::class),
-                $c->get(LoggerInterface::class)
+                config: $c->get(Config::class),
+                logger: $c->get(LoggerInterface::class),
+                events: $c->get(EventDispatcherInterface::class)
             )
+        );
+
+        $this->container->bind(
+            ValidatorInterface::class,
+            static function (ContainerInterface $c) {
+                /** @var ServerRequestInterface $parsedBody */
+                $parsedBody = $c->get(ServerRequestInterface::class);
+                return new Validator(
+                    postData: $parsedBody->getParsedBody() ?? []
+                );
+            }
         );
 
         $this->container->transient(
             MailerInterface::class,
             static fn(ContainerInterface $c) => new Mailer(
-                $c->get(Config::class),
-                $c->get(ViewInterface::class),
-                $c->get(LoggerInterface::class)
+                config: $c->get(Config::class),
+                view: $c->get(ViewInterface::class),
+                logger: $c->get(LoggerInterface::class)
             )
         );
 
         $this->container->singleton(
             Queue::class,
             static fn(ContainerInterface $c) => new Queue(
-                $c->get(Config::class),
-                $c->get(PDO::class)
+                config: $c->get(Config::class),
+                db: $c->get(PDO::class)
             )
         );
     }

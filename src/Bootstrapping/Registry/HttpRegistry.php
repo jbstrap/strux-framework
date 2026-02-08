@@ -44,17 +44,20 @@ class HttpRegistry extends ServiceRegistry
         $this->container->singleton(
             ServerRequestCreator::class,
             static fn(ContainerInterface $c) => new ServerRequestCreator(
-                $c->get(ServerRequestFactoryInterface::class),
-                $c->get(UriFactoryInterface::class),
-                $c->get(UploadedFileFactoryInterface::class),
-                $c->get(StreamFactoryInterface::class)
+                serverRequestFactory: $c->get(ServerRequestFactoryInterface::class),
+                uriFactory: $c->get(UriFactoryInterface::class),
+                uploadedFileFactory: $c->get(UploadedFileFactoryInterface::class),
+                streamFactory: $c->get(StreamFactoryInterface::class)
             )
         );
 
-        $this->container->singleton(ServerRequestInterface::class, static function (ContainerInterface $c) {
-            /** @var ServerRequestCreator $creator */
-            $creator = $c->get(ServerRequestCreator::class);
-            return $creator->fromGlobals();
-        });
+        $this->container->singleton(
+            ServerRequestInterface::class,
+            static function (ContainerInterface $c) {
+                /** @var ServerRequestCreator $creator */
+                $creator = $c->get(ServerRequestCreator::class);
+                return $creator->fromGlobals();
+            }
+        );
     }
 }

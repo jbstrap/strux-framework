@@ -31,7 +31,7 @@ class AppRegistry extends ServiceRegistry
         ViewRegistry::class,
         EventRegistry::class,
         MiddlewareRegistry::class,
-        InfrastructureRegistry::class,
+        InfrastructureRegistry::class
     ];
 
     public function __construct(?ContainerInterface $container)

@@ -32,12 +32,16 @@ class AuthRegistry extends ServiceRegistry
     {
         $this->container->singleton(
             UserProviderInterface::class,
-            static fn(ContainerInterface $c) => new DatabaseUserProvider($c->get(Config::class))
+            static fn(ContainerInterface $c) => new DatabaseUserProvider(
+                config: $c->get(Config::class)
+            )
         );
 
         $this->container->singleton(
             JwtService::class,
-            static fn(ContainerInterface $c) => new JwtService($c->get(Config::class)->get('jwt'))
+            static fn(ContainerInterface $c) => new JwtService(
+                config: $c->get(Config::class)->get('jwt')
+            )
         );
 
         $this->container->singleton(AuthManager::class, static function (ContainerInterface $c) {
@@ -45,17 +49,17 @@ class AuthRegistry extends ServiceRegistry
 
             $manager->extend('web', static function ($c) {
                 return new SessionSentinel(
-                    $c->get(SessionInterface::class),
-                    $c->get(UserProviderInterface::class),
-                    $c->get(EventDispatcher::class)
+                    session: $c->get(SessionInterface::class),
+                    provider: $c->get(UserProviderInterface::class),
+                    events: $c->get(EventDispatcher::class)
                 );
             });
 
             $manager->extend('api', static function ($c) {
                 return new TokenSentinel(
-                    $c->get(ServerRequestInterface::class),
-                    $c->get(JwtService::class),
-                    $c->get(UserProviderInterface::class)
+                    jwtService: $c->get(JwtService::class),
+                    provider: $c->get(UserProviderInterface::class),
+                    request: $c->get(ServerRequestInterface::class)
                 );
             });
 
@@ -65,9 +69,9 @@ class AuthRegistry extends ServiceRegistry
         $this->container->singleton(
             Authorizer::class,
             static fn(ContainerInterface $c) => new Authorizer(
-                $c->get(AuthManager::class),
-                $c->get(Config::class),
-                $c
+                auth: $c->get(AuthManager::class),
+                config: $c->get(Config::class),
+                container: $c
             )
         );
     }

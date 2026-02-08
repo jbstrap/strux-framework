@@ -25,15 +25,11 @@ class EventDispatcher implements EventDispatcherInterface
      */
     public function dispatch(object $event): object
     {
-        // Check if the event can be stopped
         $isStoppable = $event instanceof StoppableEventInterface;
 
-        // Get all listeners for this event
         $listeners = $this->listenerProvider->getListenersForEvent($event);
 
-        // Call each listener
         foreach ($listeners as $listener) {
-            // If a previous listener stopped propagation, we don't call anymore.
             if ($isStoppable && $event->isPropagationStopped()) {
                 break;
             }
@@ -44,7 +40,7 @@ class EventDispatcher implements EventDispatcherInterface
     }
 
     /**
-     * Proxy method to add a listener if the provider supports it.
+     * Method to add a listener.
      */
     public function addListener(string $eventClass, callable $listener): void
     {

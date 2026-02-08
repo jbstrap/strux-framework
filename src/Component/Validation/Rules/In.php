@@ -7,10 +7,12 @@ namespace Strux\Component\Validation\Rules;
 class In implements RulesInterface
 {
     private array $allowedValues;
+    private ?string $message;
 
-    public function __construct(string ...$values)
+    public function __construct(array $values, ?string $message = null)
     {
-        $this->allowedValues = $values;
+        $this->allowedValues = explode(',', implode(',', $values));
+        $this->message = $message ?? 'The selected value is invalid.';
     }
 
     public function validate($value, $data = null): ?string
@@ -20,7 +22,7 @@ class In implements RulesInterface
         }
 
         if (!in_array((string)$value, $this->allowedValues)) {
-            return 'The selected value is invalid.';
+            return $this->message;
         }
 
         return null;

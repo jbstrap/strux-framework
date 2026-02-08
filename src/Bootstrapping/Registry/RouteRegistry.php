@@ -23,27 +23,33 @@ class RouteRegistry extends ServiceRegistry
     {
         $this->container->singleton(
             Router::class,
-            static fn(ContainerInterface $c) => new Router($c->get(ServerRequestInterface::class))
+            static fn(ContainerInterface $c) => new Router(
+                currentRequest: $c->get(ServerRequestInterface::class)
+            )
         );
 
         $this->container->singleton(
             RouterLoader::class,
             static fn(ContainerInterface $c) => new RouterLoader(
-                $c->get(Router::class), $c, $c->get(LoggerInterface::class)
+                router: $c->get(Router::class),
+                container: $c,
+                logger: $c->get(LoggerInterface::class)
             )
         );
 
         $this->container->singleton(
             ParameterResolver::class,
-            static fn(ContainerInterface $c) => new ParameterResolver($c)
+            static fn(ContainerInterface $c) => new ParameterResolver(
+                container: $c
+            )
         );
 
         $this->container->singleton(
             RouteDispatcher::class,
             static fn(ContainerInterface $c) => new RouteDispatcher(
-                $c,
-                $c->get(Router::class),
-                $c->get(ParameterResolver::class)
+                container: $c,
+                router: $c->get(Router::class),
+                parameterResolver: $c->get(ParameterResolver::class)
             )
         );
     }
@@ -62,10 +68,10 @@ class RouteRegistry extends ServiceRegistry
 
         $legacyRoutesPath = $app->getRootPath() . '/etc/routes/web.php';
         if (file_exists($legacyRoutesPath)) {
-            $webRoutes = require $legacyRoutesPath;
-            if (is_callable($webRoutes)) {
+            require $legacyRoutesPath;
+            /*if (is_callable($webRoutes)) {
                 $webRoutes($router);
-            }
+            }*/
         }
 
         $mode = $config->get('app.mode');

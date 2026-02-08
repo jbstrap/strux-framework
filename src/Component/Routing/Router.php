@@ -78,7 +78,7 @@ class Router
         foreach ($segments as $segment) {
             if (preg_match(self::SEGMENT_PLACEHOLDER_CORE_PATTERN, $segment, $matches)) {
                 $currentParamName = null;
-                $currentParamType = null; // This will be the 'int', 'string', etc. or null for untyped
+                $currentParamType = null;
                 $isOptional = !empty($matches['optional_marker']);
                 $captureRegex = self::GENERIC_SEGMENT_CAPTURE_REGEX;
 

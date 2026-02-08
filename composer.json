@@ -33,7 +33,8 @@
     "psr/event-dispatcher": "^1.0",
     "firebase/php-jwt": "^6.10",
     "ext-fileinfo": "*",
-    "ext-mbstring": "*"
+    "ext-mbstring": "*",
+    "nesbot/carbon": "*"
   },
   "provide": {
     "psr/container-implementation": "1.1|2.0",

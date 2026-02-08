@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace Strux\Component\Cache;
 
 use DateInterval;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 use Psr\SimpleCache\CacheInterface;
 use Strux\Component\Cache\Drivers\ApcuCache;
 use Strux\Component\Cache\Drivers\ArrayCache;
 use Strux\Component\Cache\Drivers\FilesystemCache;
+use Strux\Component\Cache\Events\CacheHit;
+use Strux\Component\Cache\Events\CacheMiss;
+use Strux\Component\Cache\Events\KeyForgotten;
+use Strux\Component\Cache\Events\KeyWritten;
 use Strux\Component\Config\Config;
 use Strux\Component\Exceptions\CacheException;
 
@@ -17,15 +22,21 @@ class Cache implements CacheInterface
 {
     protected CacheInterface $driver;
     protected ?LoggerInterface $logger;
-    protected Config $configService;
+    protected ?EventDispatcherInterface $events;
+    protected Config $config;
     protected string $defaultStoreName;
 
-    public function __construct(Config $configService, ?LoggerInterface $logger = null)
+    public function __construct(
+        Config                    $config,
+        ?LoggerInterface          $logger = null,
+        ?EventDispatcherInterface $events = null
+    )
     {
-        $this->configService = $configService;
+        $this->config = $config;
         $this->logger = $logger;
+        $this->events = $events;
 
-        $this->defaultStoreName = $this->configService->get('cache.default', 'filesystem');
+        $this->defaultStoreName = $this->config->get('cache.default', 'filesystem');
         $this->driver = $this->resolveStore($this->defaultStoreName);
     }
 
@@ -39,14 +50,14 @@ class Cache implements CacheInterface
 
     protected function resolveStore(string $name): CacheInterface
     {
-        $storeConfig = $this->configService->get("cache.stores.$name");
+        $storeConfig = $this->config->get("cache.stores.$name");
 
         if (empty($storeConfig)) {
             throw new CacheException("Cache store configuration '$name' not found.");
         }
 
         $driverName = $storeConfig['driver'] ?? null;
-        $driverConfig = $storeConfig; // Pass the whole store etc to the driver
+        $driverConfig = $storeConfig;
 
         return match ($driverName) {
             'filesystem' => new FilesystemCache($driverConfig, $this->logger),
@@ -56,20 +67,39 @@ class Cache implements CacheInterface
         };
     }
 
-    // PSR-16 methods delegated to $this->driver
     public function get(string $key, mixed $default = null): mixed
     {
-        return $this->driver->get($key, $default);
+        $value = $this->driver->get($key, $default);
+
+        if ($value === $default) {
+            $this->events?->dispatch(new CacheMiss($key));
+        } else {
+            $this->events?->dispatch(new CacheHit($key, $value));
+        }
+
+        return $value;
     }
 
     public function set(string $key, mixed $value, null|int|DateInterval $ttl = null): bool
     {
-        return $this->driver->set($key, $value, $ttl);
+        $result = $this->driver->set($key, $value, $ttl);
+
+        if ($result) {
+            $this->events?->dispatch(new KeyWritten($key, $value, $ttl));
+        }
+
+        return $result;
     }
 
     public function delete(string $key): bool
     {
-        return $this->driver->delete($key);
+        $result = $this->driver->delete($key);
+
+        if ($result) {
+            $this->events?->dispatch(new KeyForgotten($key));
+        }
+
+        return $result;
     }
 
     public function clear(): bool
@@ -79,17 +109,49 @@ class Cache implements CacheInterface
 
     public function getMultiple(iterable $keys, mixed $default = null): iterable
     {
-        return $this->driver->getMultiple($keys, $default);
+        $values = $this->driver->getMultiple($keys, $default);
+
+        if ($values instanceof \Traversable) {
+            $values = iterator_to_array($values);
+        }
+
+        if ($this->events) {
+            foreach ($values as $key => $value) {
+                if ($value === $default) {
+                    $this->events->dispatch(new CacheMiss((string)$key));
+                } else {
+                    $this->events->dispatch(new CacheHit((string)$key, $value));
+                }
+            }
+        }
+
+        return $values;
     }
 
     public function setMultiple(iterable $values, null|int|DateInterval $ttl = null): bool
     {
-        return $this->driver->setMultiple($values, $ttl);
+        $result = $this->driver->setMultiple($values, $ttl);
+
+        if ($result && $this->events) {
+            foreach ($values as $key => $value) {
+                $this->events->dispatch(new KeyWritten((string)$key, $value, $ttl));
+            }
+        }
+
+        return $result;
     }
 
     public function deleteMultiple(iterable $keys): bool
     {
-        return $this->driver->deleteMultiple($keys);
+        $result = $this->driver->deleteMultiple($keys);
+
+        if ($result && $this->events) {
+            foreach ($keys as $key) {
+                $this->events->dispatch(new KeyForgotten((string)$key));
+            }
+        }
+
+        return $result;
     }
 
     public function has(string $key): bool

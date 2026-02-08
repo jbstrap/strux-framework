@@ -15,10 +15,17 @@ final class Paginator
     public int $lastPage;
     public ?int $from;
     public ?int $to;
-    public string $path; // base URL (without query string)
-    public array $query; // preserved query params
+    public string $path;
+    public array $query;
 
-    public function __construct(Collection $items, int $total, int $perPage, int $currentPage, string $path = '/', array $query = [])
+    public function __construct(
+        Collection $items,
+        int        $total,
+        int        $perPage,
+        int        $currentPage,
+        string     $path = '/',
+        array      $query = []
+    )
     {
         $this->items = $items;
         $this->total = $total;

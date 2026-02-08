@@ -10,6 +10,7 @@ use Strux\Component\Database\Expression;
 use Strux\Component\Database\Paginator;
 use Strux\Component\Exceptions\DatabaseException;
 use Strux\Component\Model\Model;
+use Strux\Support\Bridge\Request;
 use Strux\Support\Collection;
 
 trait HasQueryBuilder
@@ -575,10 +576,16 @@ trait HasQueryBuilder
 
     // --- Pagination ---
 
-    public function paginate(int $perPage = 15, array $columns = ['*'], string $pageName = 'page', ?int $page = null, ?string $path = '', array $query = []): Paginator
+    public function paginate(
+        int     $perPage = 15,
+        array   $columns = ['*'],
+        string  $pageName = 'page',
+        ?int    $page = null,
+        ?string $path = '',
+        array   $query = []): Paginator
     {
-        $page = $page ?: (int)($_GET[$pageName] ?? 1);
-        $query = $query ?: $_GET['query'] ?? [];
+        $page = $page ?: Request::query($pageName, 1, type: 'int');
+        $query = $query ?: Request::allQuery();
         if ($page < 1) $page = 1;
 
         $countBuilder = static::query();

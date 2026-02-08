@@ -30,7 +30,7 @@ class EventRegistry extends ServiceRegistry
         $this->container->singleton(
             EventDispatcher::class,
             static fn(ContainerInterface $c) => new EventDispatcher(
-                $c->get(ListenerProviderInterface::class)
+                listenerProvider: $c->get(ListenerProviderInterface::class)
             )
         );
 

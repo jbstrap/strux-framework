@@ -443,13 +443,14 @@ if (!function_exists('isActive')) {
 }
 
 if (!function_exists('cache')) {
-    function cache(string $key = '', mixed $default = null)
+    function cache(string $key = null, mixed $default = null): mixed
     {
-        $cacheService = ContainerBridge::get(CacheInterface::class);
-        if (!empty($key)) {
-            return $cacheService->get($key, $default);
+        /** @var CacheInterface $cache */
+        $cache = ContainerBridge::get(CacheInterface::class);
+        if ($key !== null) {
+            return $cache->get($key, $default);
         }
-        return $cacheService;
+        return $cache;
     }
 }
 

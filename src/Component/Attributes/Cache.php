@@ -7,7 +7,7 @@ namespace Strux\Component\Attributes;
 use Attribute;
 
 /**
- * Caches the response of sn API endpoint.
+ * Caches the response of an API endpoint.
  * This attribute should only be used on GET or HEAD requests.
  */
 #[Attribute(Attribute::TARGET_METHOD)]
@@ -18,6 +18,5 @@ readonly class Cache
      */
     public function __construct(public int $ttl)
     {
-
     }
 }
