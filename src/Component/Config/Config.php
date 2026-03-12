@@ -70,6 +70,7 @@ class Config implements ArrayAccess
      */
     protected function mergeConfigObject(string $key, object $configInstance): void
     {
+        /** @var ConfigInterface $configInstance */
         if (method_exists($configInstance, 'toArray')) {
             $configData = $configInstance->toArray();
 

@@ -6,9 +6,11 @@ namespace Strux\Component\Console\Traits;
 
 use Exception;
 use PDO;
-use ReflectionMethod;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use Strux\Component\Config\Config;
-use Throwable;
+use Strux\Component\Console\Output;
+use Strux\Component\Queue\WorkerInterface;
 
 trait QueueCommands
 {
@@ -16,19 +18,44 @@ trait QueueCommands
 
     abstract protected function initTable(string $table, string $sql, bool $verbose, ?string $checkDir = null, string $componentName = 'Table'): void;
 
+    /**
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     */
     private function getQueueTable(): string
     {
         try {
+            /** @var Config $config */
             $config = $this->container->get(Config::class);
-            return $config->get('queue.connections.database.table') ?? '_jobs';
+            return $config->get('queue.connections.database.table', '_jobs');
         } catch (Exception $e) {
             return '_jobs';
         }
     }
 
+    /**
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     */
+    private function getQueueFailedTable(): string
+    {
+        try {
+            /** @var Config $config */
+            $config = $this->container->get(Config::class);
+            return $config->get('queue.failed.table', '_failed_jobs');
+        } catch (Exception $e) {
+            return '_failed_jobs';
+        }
+    }
+
+    /**
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     */
     private function initQueue(bool $verbose = false): void
     {
         $table = $this->getQueueTable();
+        $failedTable = $this->getQueueFailedTable();
 
         $sql = "CREATE TABLE IF NOT EXISTS `$table` (
             `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -42,78 +69,45 @@ trait QueueCommands
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
 
         $this->initTable($table, $sql, $verbose, null, 'Queue');
+
+        $failedSql = "CREATE TABLE IF NOT EXISTS `$failedTable` (
+            `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            `connection` VARCHAR(255) NOT NULL,
+            `queue` VARCHAR(255) NOT NULL,
+            `payload` LONGTEXT NOT NULL,
+            `exception` LONGTEXT NOT NULL,
+            `failed_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
+
+        $this->initTable($failedTable, $failedSql, $verbose, null, 'Failed Queue');
     }
 
+    /**
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     */
     private function workQueue(): void
     {
-        echo "Queue worker started. Press Ctrl+C to stop.\n";
+        Output::info("Queue worker started. Press Ctrl+C to stop.");
         $tableName = $this->getQueueTable();
 
+        /** @var PDO $pdo */
         $pdo = $this->container->get(PDO::class);
+
         try {
             $pdo->query("SELECT 1 FROM `$tableName` LIMIT 1");
         } catch (Exception $e) {
-            echo "Error: Queue table '$tableName' not found. Run 'php console queue:init'.\n";
+            Output::error("Error: Queue table '$tableName' not found. Run 'php bin/console queue:init'.\n");
             exit(1);
         }
 
-        while (true) {
-            // Re-fetch PDO to handle potential timeouts or disconnects in long-running process
-            // Though container usually returns singleton, PDO handles keepalive.
-            // Just using the container instance is standard.
-            $job = null;
-            try {
-                $pdo->beginTransaction();
-                $stmt = $pdo->prepare("SELECT * FROM {$tableName} WHERE queue = 'default' AND reserved_at IS NULL AND available_at <= ? ORDER BY id ASC LIMIT 1 FOR UPDATE");
-                $stmt->execute([time()]);
-                $job = $stmt->fetch(PDO::FETCH_OBJ);
+        /** @var WorkerInterface $worker */
+        $worker = $this->container->get(WorkerInterface::class);
 
-                if ($job) {
-                    $updateStmt = $pdo->prepare("UPDATE {$tableName} SET reserved_at = ?, attempts = attempts + 1 WHERE id = ?");
-                    $updateStmt->execute([time(), $job->id]);
-                    $pdo->commit();
-
-                    echo "Processing job: {$job->id}\n";
-                    $payload = json_decode($job->payload, true);
-
-                    $jobInstance = unserialize($payload['data']['command']);
-
-                    $dependencies = $this->resolveJobDependencies($jobInstance);
-
-                    if (method_exists($jobInstance, 'handle')) {
-                        $jobInstance->handle(...$dependencies);
-                    }
-
-                    $deleteStmt = $pdo->prepare("DELETE FROM {$tableName} WHERE id = ?");
-                    $deleteStmt->execute([$job->id]);
-                    echo "Job {$job->id} processed successfully.\n";
-                } else {
-                    $pdo->commit();
-                }
-            } catch (Throwable $e) {
-                if ($pdo->inTransaction()) {
-                    $pdo->rollBack();
-                }
-                echo "Error: " . $e->getMessage() . "\n";
-                sleep(5);
-            }
-            if (!$job) sleep(3);
+        if (!$worker) {
+            Output::error("Error: Queue Worker not found in container.\n");
+            exit(1);
         }
-    }
-
-    private function resolveJobDependencies(object $jobInstance): array
-    {
-        if (!method_exists($jobInstance, 'handle')) {
-            return [];
-        }
-        $dependencies = [];
-        $reflectionMethod = new ReflectionMethod($jobInstance, 'handle');
-        foreach ($reflectionMethod->getParameters() as $param) {
-            $type = $param->getType();
-            if ($type && !$type->isBuiltin()) {
-                $dependencies[] = $this->container->get($type->getName());
-            }
-        }
-        return $dependencies;
+        $worker->process('default');
     }
 }

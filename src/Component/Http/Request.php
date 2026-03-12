@@ -341,18 +341,6 @@ class Request
     }
 
     /**
-     * Get a request attribute (from PSR-7 request attributes).
-     *
-     * @param string $name The attribute name.
-     * @param mixed $default Default value if attribute not found.
-     * @return mixed
-     */
-    public function getAttribute(string $name, mixed $default = null): mixed
-    {
-        return $this->request->getAttribute($name, $default);
-    }
-
-    /**
      * Check if the request method matches the provided type (get, post, put, etc.).
      * @param string $method
      * @return bool
@@ -377,7 +365,6 @@ class Request
     public function isPath(string $pattern): bool
     {
         $path = $this->path();
-        // Ensure the pattern is also trimmed if it might contain slashes
         $normalizedPattern = trim($pattern, '/');
         $regexPattern = str_replace('*', '[^/]*', $normalizedPattern);
         return (bool)preg_match("#^$regexPattern$#i", $path);
@@ -467,7 +454,7 @@ class Request
     /**
      * Helper to find a value in an array using dot notation.
      */
-    private function findInArray(string $key, array $data, mixed $default = null): mixed
+    public function findInArray(string $key, array $data, mixed $default = null): mixed
     {
         if (array_key_exists($key, $data)) {
             return $data[$key];
@@ -486,5 +473,146 @@ class Request
         }
 
         return $data;
+    }
+
+    // PSR-7 ServerRequestInterface passthrough methods for direct access if needed
+
+    /**
+     * Get the server parameters from the request.
+     *
+     * @return array An associative array of server parameters.
+     */
+    public function getServerParams(): array
+    {
+        return $this->request->getServerParams();
+    }
+
+    /**
+     * Get the cookie parameters from the request.
+     *
+     * @return array An associative array of cookies.
+     */
+    public function getCookieParams(): array
+    {
+        return $this->request->getCookieParams();
+    }
+
+    /**
+     * Replace the cookie parameters with new data. This is useful for middleware that modifies cookies.
+     *
+     * @param array $cookies An associative array of cookies.
+     * @return Request
+     */
+    public function withCookieParams(array $cookies): Request
+    {
+        return new self($this->request->withCookieParams($cookies));
+    }
+
+    /**
+     * Get the query parameters from the request.
+     *
+     * @return array An associative array of query parameters.
+     */
+    public function getQueryParams(): array
+    {
+        return $this->request->getQueryParams();
+    }
+
+    /**
+     * Replace the query parameters with new data. This is useful for middleware that modifies the query string.
+     *
+     * @param array $query An associative array of query parameters.
+     * @return Request
+     */
+    public function withQueryParams(array $query): Request
+    {
+        return new self($this->request->withQueryParams($query));
+    }
+
+    /**
+     * Get the uploaded files from the request.
+     *
+     * @return array An associative array of uploaded files.
+     */
+    public function getUploadedFiles(): array
+    {
+        return $this->request->getUploadedFiles();
+    }
+
+    /**
+     * Replace the uploaded files with new data. This is useful for middleware that modifies the uploaded files.
+     *
+     * @param array $uploadedFiles An associative array of uploaded files.
+     * @return Request
+     */
+    public function withUploadedFiles(array $uploadedFiles): Request
+    {
+        return new self($this->request->withUploadedFiles($uploadedFiles));
+    }
+
+    /**
+     * Get the parsed body of the request (e.g., POST data).
+     *
+     * @return array|object|null
+     */
+    public function getParsedBody(): object|array|null
+    {
+        return $this->request->getParsedBody();
+    }
+
+    /**
+     * Replace the parsed body with new data. This is useful for middleware that modifies the request body.
+     *
+     * @param $data
+     * @return Request
+     */
+    public function withParsedBody($data): Request
+    {
+        return new self($this->request->withParsedBody($data));
+    }
+
+    /**
+     * Get all request attributes (from PSR-7 request attributes).
+     *
+     * @return array
+     */
+    public function getAttributes(): array
+    {
+        return $this->request->getAttributes();
+    }
+
+    /**
+     * Get a request attribute (from PSR-7 request attributes).
+     *
+     * @param string $name The attribute name.
+     * @param mixed $default Default value if attribute not found.
+     * @return mixed
+     */
+    public function getAttribute(string $name, mixed $default = null): mixed
+    {
+        return $this->request->getAttribute($name, $default);
+    }
+
+    /**
+     * Add or replace a request attribute. This is useful for middleware that adds route parameters or other metadata.
+     *
+     * @param string $name The attribute name.
+     * @param mixed $value The attribute value.
+     * @return Request
+     */
+    public function withAttribute(string $name, mixed $value): Request
+    {
+        return new self($this->request->withAttribute($name, $value));
+    }
+
+    /**
+     * Remove a request attribute. This is useful for middleware that needs to clean up attributes.
+     *
+     * @param string $name The attribute name to remove.
+     * @return Request
+     */
+    public function withoutAttribute(string $name): Request
+    {
+        return new self($this->request->withoutAttribute($name));
     }
 }

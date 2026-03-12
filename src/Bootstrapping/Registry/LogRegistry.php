@@ -4,46 +4,39 @@ declare(strict_types=1);
 
 namespace Strux\Bootstrapping\Registry;
 
-use Monolog\Formatter\LineFormatter;
+use Monolog\Handler\BrowserConsoleHandler;
+use Monolog\Handler\RotatingFileHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Level;
 use Monolog\Logger;
-use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
-use Psr\Container\NotFoundExceptionInterface;
 use Psr\Log\LoggerInterface;
-use Strux\Component\Config\Config;
 use Strux\Foundation\Application;
+use Strux\Support\Bridge\Config;
 
 class LogRegistry extends ServiceRegistry
 {
     public function build(): void
     {
         $this->container->singleton(LoggerInterface::class, static function (ContainerInterface $c) {
-            /**@var Config $config */
-            $config = $c->get(Config::class);
-            $logger = new Logger($config->get('app.name', 'app'));
-            $env = $config->get('app.env', 'production');
-            $logLevel = $config->get('app.debug', false) ? Level::Debug : Level::Info;
-            $logFilePath = $config->get('app.log_dir') . '/app.log';
-            if (!is_dir(dirname($logFilePath))) {
-                mkdir(dirname($logFilePath), 0775, true);
+            $logger = new Logger(Config::get('app.log.name', 'app'));
+            $env = Config::get('app.env', 'production');
+            if ($env === 'development') {
+                $logger->pushHandler(new StreamHandler('php://stderr', Level::Debug));
+                $logger->pushHandler(new BrowserConsoleHandler(Level::Debug));
+            } else {
+                $logger->pushHandler(new RotatingFileHandler(
+                    (Config::get('app.log.path') ?? Config::get('app.log_dir')) . '/app.log',
+                    7,
+                    Level::Warning
+                ));
             }
-            $handler = new StreamHandler($logFilePath, $logLevel);
-            $handler->setFormatter(new LineFormatter(null, null, true, true));
-            $logger->pushHandler($handler);
             return $logger;
         });
     }
 
-    /**
-     * @throws ContainerExceptionInterface
-     * @throws NotFoundExceptionInterface
-     */
     public function init(Application $app): void
     {
-        /**@var Config $config */
-        $config = $this->container->get(Config::class);
-        $config->set('app.log_dir', $app->getRootPath() . '/var/logs');
+        Config::set('app.log_dir', $app->getRootPath() . '/var/logs');
     }
 }

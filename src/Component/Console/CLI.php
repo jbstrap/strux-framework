@@ -176,7 +176,7 @@ class CLI
         $this->register('var:link', 'Link the storage directory to web', fn() => $this->linkStorage());
         $this->register('var:unlink', 'Unlink the storage directory from web', fn() => $this->unlinkStorage());
         $this->register('run', 'Run dev server', function () {
-            $publicDir = defined('ROOT_PATH') ? ROOT_PATH . '/web' : dirname(__DIR__, 4) . '/web';
+            $publicDir = dirname(__DIR__, 6) . '/web';
             passthru('php -S 127.0.0.1:8000 -t "' . escapeshellarg($publicDir) . '"');
         });
     }
@@ -273,7 +273,7 @@ class CLI
     {
         try {
             return $this->container->get(PDO::class) ?? ContainerBridge::resolve(PDO::class);
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             echo "Error: " . $e->getMessage() . "\n";
             exit(1);
         }

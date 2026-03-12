@@ -35,7 +35,6 @@ use Strux\Support\FrameworkBridge;
  * @method static array routeParams()
  * @method static bool isAjax()
  * @method static bool isSecure()
- * @method static mixed getAttribute()
  * @method static bool is(string $method)
  * @method static string path()
  * @method static bool isPath(string $pattern)
@@ -43,6 +42,21 @@ use Strux\Support\FrameworkBridge;
  * @method static string getRefer()
  * @method static string getReferrer()
  * @method static mixed castValue(mixed $value, string $type)
+ * @method static mixed findInArray(string $key, array $data, mixed $default = null)
+ *
+ * @method static array getServerParams()
+ * @method static array getCookieParams()
+ * @method static \Strux\Component\Http\Request withCookieParams(array $cookies)
+ * @method static array getQueryParams()
+ * @method static \Strux\Component\Http\Request withQueryParams(array $query)
+ * @method static array getUploadedFiles()
+ * @method static \Strux\Component\Http\Request withUploadedFiles(array $uploadedFiles)
+ * @method static object|array|null getParsedBody()
+ * @method static \Strux\Component\Http\Request withParsedBody($data)
+ * @method static array getAttributes()
+ * @method static mixed getAttribute(string $name, mixed $default = null)
+ * @method static \Strux\Component\Http\Request withAttribute(string $name, mixed $value)
+ * @method static \Strux\Component\Http\Request withoutAttribute(string $name)
  * @see \Strux\Component\Http\Request
  */
 class Request extends FrameworkBridge

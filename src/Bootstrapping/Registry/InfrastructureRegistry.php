@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Strux\Bootstrapping\Registry;
 
-use PDO;
 use Psr\Container\ContainerInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -16,7 +15,6 @@ use Strux\Component\Http\Cookie;
 use Strux\Component\Http\CookieInterface;
 use Strux\Component\Mail\Mailer;
 use Strux\Component\Mail\MailerInterface;
-use Strux\Component\Queue\Queue;
 use Strux\Component\Session\SessionInterface;
 use Strux\Component\Session\SessionManager;
 use Strux\Component\Validation\Validator;
@@ -77,14 +75,6 @@ class InfrastructureRegistry extends ServiceRegistry
                 config: $c->get(Config::class),
                 view: $c->get(ViewInterface::class),
                 logger: $c->get(LoggerInterface::class)
-            )
-        );
-
-        $this->container->singleton(
-            Queue::class,
-            static fn(ContainerInterface $c) => new Queue(
-                config: $c->get(Config::class),
-                db: $c->get(PDO::class)
             )
         );
     }

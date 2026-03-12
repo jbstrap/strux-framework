@@ -19,14 +19,20 @@ class CallQueuedListener extends Job
     public string $listenerClass;
 
     /**
+     * @var string The method name to be called on the listener
+     */
+    public string $method;
+
+    /**
      * @var object The event object to be processed (must be serializable)
      */
     public object $event;
 
-    public function __construct(string $listenerClass, object $event)
+    public function __construct(string $listenerClass, object $event, string $method = 'handle')
     {
         $this->listenerClass = $listenerClass;
         $this->event = $event;
+        $this->method = $method;
     }
 
     /**
@@ -45,27 +51,23 @@ class CallQueuedListener extends Job
 
         $container = ContainerBridge::getContainer();
 
-        if (!$container) {
-            throw new RuntimeException("Container not set in ContainerBridge. Is the app booted?");
-        }
-
         // 2. Resolve the Listener
         // This gives us a fresh instance with all dependencies (Mailer, Logger) injected.
-        if ($container->has($this->listenerClass)) {
-            $listener = $container->get($this->listenerClass);
-        } elseif (class_exists($this->listenerClass)) {
+        if ($container->has($this->listenerClass) || class_exists($this->listenerClass)) {
             $listener = $container->get($this->listenerClass);
         } else {
             throw new RuntimeException("Listener class '{$this->listenerClass}' not found.");
         }
 
-        // 3. Execute the Listener
-        if (method_exists($listener, 'handle')) {
-            $listener->handle($this->event);
+        // 3. Execute the Listener using the specific method
+        if (method_exists($listener, $this->method)) {
+            $listener->{$this->method}($this->event);
+        } elseif ($this->method === '__invoke' && is_callable($listener)) {
+            $listener($this->event);
         } elseif (is_callable($listener)) {
             $listener($this->event);
         } else {
-            throw new RuntimeException("Listener '{$this->listenerClass}' is not callable.");
+            throw new RuntimeException("Listener method '{$this->listenerClass}::{$this->method}' not found or not callable.");
         }
     }
 }

@@ -8,6 +8,7 @@ use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use Strux\Bootstrapping\Registry\ServiceRegistry;
 use Strux\Component\Config\Config;
 use Strux\Component\Http\Middleware\Dispatcher as MiddlewareDispatcher;
@@ -15,6 +16,7 @@ use Strux\Component\Http\Psr7\ServerRequestCreator;
 use Strux\Component\Http\ResponseEmitter;
 use Strux\Component\Routing\RouteDispatcher;
 use Strux\Component\Routing\Router;
+use Throwable;
 
 class Application
 {
@@ -68,7 +70,7 @@ class Application
             return $this->container->get(Config::class)->get('app.log_dir', $this->rootPath . '/var/logs');
         }
 
-        throw new \RuntimeException('Logger does not support retrieving log directory.');
+        throw new RuntimeException('Logger does not support retrieving log directory.');
     }
 
     /**
@@ -81,7 +83,7 @@ class Application
             return $this->container->get(Config::class)->get('app.cache_dir', $this->rootPath . '/var/cache');
         }
 
-        throw new \RuntimeException('Config service not found in container.');
+        throw new RuntimeException('Config service not found in container.');
     }
 
     /**
@@ -93,7 +95,7 @@ class Application
             return $this->container->get(Config::class)->get('app.view_dir', $this->rootPath . '/templates');
         }
 
-        throw new \RuntimeException('Config service not found in container.');
+        throw new RuntimeException('Config service not found in container.');
     }
 
     /**
@@ -116,7 +118,7 @@ class Application
             return $this->container->get(Config::class)->get('app.env', 'production');
         }
 
-        throw new \RuntimeException('Config service not found in container.');
+        throw new RuntimeException('Config service not found in container.');
     }
 
     /**
@@ -193,7 +195,7 @@ class Application
         } elseif (method_exists($registry, 'register')) {
             $registry->register();
         } else {
-            throw new \RuntimeException("ServiceRegistry class {$registryClass} must implement a build() or register() method.");
+            throw new RuntimeException("ServiceRegistry class {$registryClass} must implement a build() or register() method.");
         }
 
         return $this;
@@ -264,8 +266,8 @@ class Application
     {
         try {
             return $this->getRouter()->get($uri, $action);
-        } catch (NotFoundExceptionInterface|ContainerExceptionInterface $e) {
-            throw new \RuntimeException('Router service not found in container.', 0, $e);
+        } catch (Throwable $e) {
+            throw new RuntimeException('Router service not found in container.', 0, $e);
         }
     }
 
@@ -280,8 +282,8 @@ class Application
     {
         try {
             return $this->getRouter()->post($uri, $action);
-        } catch (NotFoundExceptionInterface|ContainerExceptionInterface $e) {
-            throw new \RuntimeException('Router service not found in container.', 0, $e);
+        } catch (Throwable $e) {
+            throw new RuntimeException('Router service not found in container.', 0, $e);
         }
     }
 
@@ -296,8 +298,8 @@ class Application
     {
         try {
             return $this->getRouter()->put($uri, $action);
-        } catch (NotFoundExceptionInterface|ContainerExceptionInterface $e) {
-            throw new \RuntimeException('Router service not found in container.', 0, $e);
+        } catch (Throwable $e) {
+            throw new RuntimeException('Router service not found in container.', 0, $e);
         }
     }
 
@@ -312,8 +314,8 @@ class Application
     {
         try {
             return $this->getRouter()->patch($uri, $action);
-        } catch (NotFoundExceptionInterface|ContainerExceptionInterface $e) {
-            throw new \RuntimeException('Router service not found in container.', 0, $e);
+        } catch (Throwable $e) {
+            throw new RuntimeException('Router service not found in container.', 0, $e);
         }
     }
 
@@ -328,8 +330,8 @@ class Application
     {
         try {
             return $this->getRouter()->delete($uri, $action);
-        } catch (NotFoundExceptionInterface|ContainerExceptionInterface $e) {
-            throw new \RuntimeException('Router service not found in container.', 0, $e);
+        } catch (Throwable $e) {
+            throw new RuntimeException('Router service not found in container.', 0, $e);
         }
     }
 
@@ -343,11 +345,11 @@ class Application
     public function group(array $attributes, callable $callback): self
     {
         try {
-            $this->getRouter()->group($attributes, function ($router) use ($callback) {
+            $this->getRouter()->group($attributes, function () use ($callback) {
                 $callback($this);
             });
-        } catch (NotFoundExceptionInterface|ContainerExceptionInterface $e) {
-            throw new \RuntimeException('Router service not found in container.', 0, $e);
+        } catch (Throwable $e) {
+            throw new RuntimeException('Router service not found in container.', 0, $e);
         }
 
         return $this;

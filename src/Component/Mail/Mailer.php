@@ -10,9 +10,7 @@ use Psr\Log\LoggerInterface;
 use Strux\Component\Config\Config;
 use Strux\Component\View\ViewInterface;
 
-// To render email templates
-
-class Mailer
+class Mailer implements MailerInterface
 {
     private Config $config;
     private ViewInterface $view;
@@ -23,7 +21,11 @@ class Mailer
     private array $cc = [];
     private array $bcc = [];
 
-    public function __construct(Config $config, ViewInterface $view, LoggerInterface $logger)
+    public function __construct(
+        Config          $config,
+        ViewInterface   $view,
+        LoggerInterface $logger
+    )
     {
         $this->config = $config;
         $this->view = $view;
@@ -31,7 +33,7 @@ class Mailer
     }
 
     /**
-     * Set the recipient of the message.
+     * @inheritDoc
      */
     public function to(string $address, ?string $name = null): self
     {
@@ -40,12 +42,7 @@ class Mailer
     }
 
     /**
-     * Send the email.
-     *
-     * @param string $view The view file for the email's HTML body.
-     * @param array $data The data to pass to the view.
-     * @param callable|null $callback A closure to customize the PHPMailer instance (e.g., for attachments).
-     * @return bool
+     * @inheritDoc
      */
     public function send(string $view, array $data = [], ?callable $callback = null): bool
     {
