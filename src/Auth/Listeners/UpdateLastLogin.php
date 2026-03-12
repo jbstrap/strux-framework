@@ -4,21 +4,22 @@ declare(strict_types=1);
 
 namespace Strux\Auth\Listeners;
 
-use Strux\Auth\Events\UserLoggedIn;
+use App\Domain\General\Entity\User;
 use DateTime;
+use Strux\Auth\Events\UserLoggedIn;
 
 class UpdateLastLogin
 {
     public function handle(UserLoggedIn $event): void
     {
+        /** @var User $user */
         $user = $event->user;
 
-        // Ensure the user model has a save method and last_login_at property
         if (property_exists($user, 'last_login_at') && method_exists($user, 'save')) {
             $user->last_login_at = new DateTime();
             $user->save();
         } else {
-            error_log('last_login_at does not exist');
+            error_log('last_login_at property does not exist');
         }
     }
 }
