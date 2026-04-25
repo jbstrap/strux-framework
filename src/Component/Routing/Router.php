@@ -52,8 +52,7 @@ class Router
 
     public function __construct(
         ?ServerRequestInterface $currentRequest = null
-    )
-    {
+    ) {
         $this->currentRequest = $currentRequest;
     }
 
@@ -141,7 +140,7 @@ class Router
         }
 
 
-        $methods = array_map('strtoupper', (array)$httpMethods);
+        $methods = array_map('strtoupper', (array) $httpMethods);
         $paramDefinitions = [];
         $regex = $this->compileUriToRegex($fullUri, $paramDefinitions);
 
@@ -296,7 +295,8 @@ class Router
         } elseif ($fullFromPath === '') {
             $fullFromPath = '/';
         }
-        if ($fullFromPath !== '/') $fullFromPath = '/' . ltrim($fullFromPath, '/');
+        if ($fullFromPath !== '/')
+            $fullFromPath = '/' . ltrim($fullFromPath, '/');
         $paramDefinitions = [];
         $regex = $this->compileUriToRegex($fullFromPath, $paramDefinitions);
         $this->redirectRoutes[] = [
@@ -323,8 +323,8 @@ class Router
             $prefixToAdd = $attributes;
         } else {
             $prefixToAdd = $attributes['prefix'] ?? '';
-            $middlewareToAdd = (array)($attributes['middleware'] ?? []);
-            $defaultsToAdd = (array)($attributes['defaults'] ?? []);
+            $middlewareToAdd = (array) ($attributes['middleware'] ?? []);
+            $defaultsToAdd = (array) ($attributes['defaults'] ?? []);
         }
         $newPrefixSegment = trim($prefixToAdd, '/');
         if ($this->currentGroupPrefix === '') {
@@ -334,7 +334,8 @@ class Router
                 $this->currentGroupPrefix = $this->currentGroupPrefix . '/' . $newPrefixSegment;
             }
         }
-        if ($this->currentGroupPrefix === '/') $this->currentGroupPrefix = '';
+        if ($this->currentGroupPrefix === '/')
+            $this->currentGroupPrefix = '';
         $this->currentGroupMiddleware = array_unique(array_merge($previousGroupMiddleware, $middlewareToAdd));
         $this->currentGroupDefaults = array_merge($previousGroupDefaults, $defaultsToAdd);
         $callback($this);
@@ -346,8 +347,10 @@ class Router
     public function dispatch(string $httpMethod, string $uri): array
     {
         $normalizedUri = '/' . trim($uri, '/');
-        if ($normalizedUri === '' && $uri !== '') $normalizedUri = $uri;
-        elseif ($normalizedUri === '') $normalizedUri = '/';
+        if ($normalizedUri === '' && $uri !== '')
+            $normalizedUri = $uri;
+        elseif ($normalizedUri === '')
+            $normalizedUri = '/';
         // error_log("--- Dispatching URI: '{$normalizedUri}', Method: '{$httpMethod}' ---");
 
         foreach ($this->redirectRoutes as $idx => $redirectRoute) {
@@ -405,7 +408,7 @@ class Router
                         // Validate type if a type is specified
                         if ($type !== null && $type !== '*' && $rawValue !== null) {
                             $validatorRegex = self::PARAM_TYPES_REGEX_VALIDATORS[$type] ?? null;
-                            if ($validatorRegex && !preg_match($validatorRegex, (string)$rawValue)) {
+                            if ($validatorRegex && !preg_match($validatorRegex, (string) $rawValue)) {
                                 throw new RouteParameterTypeMismatchException($name, $type, $rawValue, code: 400);
                             }
                         }
@@ -511,13 +514,13 @@ class Router
                 $isOptional = $paramDef['optional'];
 
                 if (array_key_exists($paramName, $parameters)) {
-                    $builtSegments[] = (string)$parameters[$paramName];
+                    $builtSegments[] = (string) $parameters[$paramName];
                     $usedParams[$paramName] = true;
                 } elseif ($isOptional) {
                     // Optional and not provided, skip this segment
                     continue;
                 } elseif (isset($routeDefinitionForGeneration['defaults'][$paramName])) {
-                    $builtSegments[] = (string)$routeDefinitionForGeneration['defaults'][$paramName];
+                    $builtSegments[] = (string) $routeDefinitionForGeneration['defaults'][$paramName];
                     $usedParams[$paramName] = true; // Consider default as used
                 } else {
                     throw new InvalidArgumentException("Missing required parameter '{$paramName}' for named route '{$name}'.");

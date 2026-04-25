@@ -44,7 +44,7 @@ class Kernel
             try {
                 $dotenv = Dotenv::createImmutable($rootPath);
                 $dotenv->load();
-            } catch (InvalidPathException|ValidationException $e) {
+            } catch (InvalidPathException | ValidationException $e) {
                 error_log("FATAL: Dotenv Exception: " . $e->getMessage());
                 http_response_code(500);
                 die("<h1>Application Configuration Error</h1><p>Essential configuration failed to load.</p>");

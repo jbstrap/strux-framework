@@ -108,11 +108,11 @@ class Config implements ArrayAccess
         // If a type is specified, convert the value to that type
         if ($type !== null) {
             return match ($type) {
-                'int' => (int)$config,
-                'float' => (float)$config,
-                'bool' => (bool)$config,
-                'array' => (array)$config,
-                'string' => (string)$config,
+                'int' => (int) $config,
+                'float' => (float) $config,
+                'bool' => (bool) $config,
+                'array' => (array) $config,
+                'string' => (string) $config,
                 default => $config
             };
         }
@@ -204,21 +204,21 @@ class Config implements ArrayAccess
      */
     public function offsetExists($offset): bool
     {
-        return $this->has((string)$offset);
+        return $this->has((string) $offset);
     }
 
     public function offsetGet($offset): mixed
     {
-        return $this->get((string)$offset);
+        return $this->get((string) $offset);
     }
 
     public function offsetSet($offset, $value): void
     {
-        $this->set((string)$offset, $value);
+        $this->set((string) $offset, $value);
     }
 
     public function offsetUnset($offset): void
     {
-        $this->remove((string)$offset);
+        $this->remove((string) $offset);
     }
 }

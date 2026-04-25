@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Strux\Bootstrapping\Registry;
 
-use App\Http\Middleware\GuestMiddleware;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
@@ -82,6 +81,7 @@ class MiddlewareRegistry extends ServiceRegistry
                 logger: $c->get(LoggerInterface::class)
             )
         );
+
         $this->container->singleton(
             ApiAuthMiddleware::class,
             static fn(ContainerInterface $c) => new ApiAuthMiddleware(
@@ -90,17 +90,7 @@ class MiddlewareRegistry extends ServiceRegistry
                 logger: $c->get(LoggerInterface::class)
             )
         );
-        $this->container->singleton(
-            GuestMiddleware::class,
-            static fn(ContainerInterface $c) => new GuestMiddleware(
-                authManager: $c->get(AuthManager::class),
-                responseFactory: $c->get(ResponseFactoryInterface::class),
-                router: $c->get(Router::class),
-                flash: $c->get(FlashInterface::class),
-                config: $c->get(Config::class),
-                logger: $c->get(LoggerInterface::class)
-            )
-        );
+
         $this->container->singleton(
             MaintenanceModeMiddleware::class,
             static fn(ContainerInterface $c) => new MaintenanceModeMiddleware(
@@ -116,10 +106,7 @@ class MiddlewareRegistry extends ServiceRegistry
             return new CorsMiddleware(
                 options: array_merge($corsConfig, [
                     "logger" => $c->get(LoggerInterface::class),
-                    "error" => function (
-                        ServerRequestInterface $request,
-                        ResponseInterface      $response, $args
-                    ) {
+                    "error" => function (ServerRequestInterface $request, ResponseInterface $response, $args) {
                         $data["status"] = "error";
                         $data["message"] = $args["message"];
                         return $response
@@ -166,7 +153,7 @@ class MiddlewareRegistry extends ServiceRegistry
             if ($this->container->get(Config::class)->get('maintenance.active', false)) {
                 $app->addMiddleware($this->container->get(MaintenanceModeMiddleware::class));
             }
-        } catch (NotFoundExceptionInterface|ContainerExceptionInterface $e) {
+        } catch (NotFoundExceptionInterface | ContainerExceptionInterface $e) {
             throw new $e;
         }
     }

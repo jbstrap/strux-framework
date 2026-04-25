@@ -45,12 +45,4 @@ class ViewRegistry extends ServiceRegistry
             throw new InvalidArgumentException("Unsupported view engine: $engineType");
         });
     }
-
-    public function init(Application $app): void
-    {
-        $this->config->set('view.template_paths', [
-            'default' => dirname(__DIR__, 6) . '/templates',
-            'partials' => dirname(__DIR__, 6) . '/templates/partials',
-        ]);
-    }
 }

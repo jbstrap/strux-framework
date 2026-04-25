@@ -78,8 +78,8 @@ class RouteRegistry extends ServiceRegistry
 
         if ($mode === 'standard') {
             // --- Standard Mode Structure ---
-            $webControllerDir = $app->getRootPath() . '/src/Controller';
-            $apiControllerDir = $app->getRootPath() . '/src/Controller/Api';
+            $webControllerDir = $app->getRootPath() . '/src/Controllers';
+            $apiControllerDir = $app->getRootPath() . '/src/Controllers/Api';
         } else {
             // --- Domain Mode Structure (Default) ---
             $webControllerDir = $app->getRootPath() . '/src/Http/Controllers/Web';

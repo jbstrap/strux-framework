@@ -15,11 +15,17 @@ class UpdateLastLogin
         /** @var User $user */
         $user = $event->user;
 
-        if (property_exists($user, 'last_login_at') && method_exists($user, 'save')) {
+        try {
+            $user->last_login_at = new DateTime();
+            $user->save();
+        } catch (\Throwable $e) {
+            error_log('Failed to update last_login_at: ' . $e->getMessage());
+        }
+        /*if (property_exists($user, 'last_login_at') && method_exists($user, 'save')) {
             $user->last_login_at = new DateTime();
             $user->save();
         } else {
             error_log('last_login_at property does not exist');
-        }
+        }*/
     }
 }

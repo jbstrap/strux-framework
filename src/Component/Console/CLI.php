@@ -27,10 +27,12 @@ class CLI
 
     private ContainerInterface $container;
     private array $commands = [];
+    private string $rootPath;
 
-    public function __construct(ContainerInterface $container)
+    public function __construct(ContainerInterface $container, string $rootPath)
     {
         $this->container = $container;
+        $this->rootPath = $rootPath;
         $this->registerDefaultCommands();
     }
 
@@ -39,7 +41,9 @@ class CLI
         // --- Generators ---
 
         // Controller
-        $this->register('new:controller {name} [--type]', 'Create controller',
+        $this->register(
+            'new:controller {name} [--type]',
+            'Create controller',
             function ($n = null, $o = []) {
                 if (!is_string($n) || empty($n)) {
                     echo "\033[31mError: Controller name is required.\033[0m\nUsage: php bin/console new:controller <Name> [--type]\n";
@@ -51,7 +55,9 @@ class CLI
         $this->commands['g:c'] = &$this->commands['new:controller {name} [--type]'];
 
         // Model (Entity)
-        $this->register('new:entity {name} [--domain|-d] [--migrate|-m]', 'Create entity',
+        $this->register(
+            'new:entity {name} [--domain|-d] [--migrate|-m]',
+            'Create entity',
             function ($n = null, $o = []) {
                 if (!is_string($n) || empty($n)) {
                     echo "\033[31mError: Entity name is required.\033[0m\nUsage: php bin/console new:entity <Name> [--domain=<Name>] [--migrate]\n";
@@ -70,7 +76,9 @@ class CLI
         $this->commands['g:m'] = &$this->commands['new:entity {name} [--domain|-d] [--migrate|-m]'];
 
         // Job
-        $this->register('new:job {name} [--domain|-d]', 'Create job',
+        $this->register(
+            'new:job {name} [--domain|-d]',
+            'Create job',
             function ($n = null, $o = []) {
                 if (!is_string($n) || empty($n)) {
                     echo "\033[31mError: Job name is required.\033[0m\nUsage: php bin/console new:job <Name> [--domain=<Name>]\n";
@@ -84,7 +92,9 @@ class CLI
         );
 
         // Event
-        $this->register('new:event {name} [--domain|-d] [--listener]', 'Create event',
+        $this->register(
+            'new:event {name} [--domain|-d] [--listener]',
+            'Create event',
             function ($n = null, $o = []) {
                 if (!is_string($n) || empty($n)) {
                     echo "\033[31mError: Event name is required.\033[0m\nUsage: php bin/console new:event <Name> [--domain=<Name>] [--listener=<Name>]\n";
@@ -99,7 +109,9 @@ class CLI
         );
 
         // Listener
-        $this->register('new:listener {name} [--domain|-d] [--event]', 'Create listener',
+        $this->register(
+            'new:listener {name} [--domain|-d] [--event]',
+            'Create listener',
             function ($n = null, $o = []) {
                 if (!is_string($n) || empty($n)) {
                     echo "\033[31mError: Listener name is required.\033[0m\nUsage: php bin/console new:listener <Name> [--domain=<Name>] [--event=<Name>]\n";
@@ -114,7 +126,9 @@ class CLI
         );
 
         // Middleware
-        $this->register('new:middleware {name}', 'Create middleware',
+        $this->register(
+            'new:middleware {name}',
+            'Create middleware',
             function ($n = null) {
                 if (!is_string($n) || empty($n)) {
                     echo "\033[31mError: Middleware name is required.\033[0m\nUsage: php bin/console new:middleware <Name>\n";
@@ -125,7 +139,9 @@ class CLI
         );
 
         // Registry
-        $this->register('new:registry {name}', 'Create service registry',
+        $this->register(
+            'new:registry {name}',
+            'Create service registry',
             function ($n = null) {
                 if (!is_string($n) || empty($n)) {
                     echo "\033[31mError: Registry name is required.\033[0m\nUsage: php bin/console new:registry <Name>\n";
@@ -136,7 +152,9 @@ class CLI
         );
 
         // Module
-        $this->register('new:module {name}', 'Scaffold domain module',
+        $this->register(
+            'new:module {name}',
+            'Scaffold domain module',
             function ($n = null) {
                 if (!is_string($n) || empty($n)) {
                     echo "\033[31mError: Module name is required.\033[0m\nUsage: php bin/console new:module <Name>\n";
@@ -176,7 +194,7 @@ class CLI
         $this->register('var:link', 'Link the storage directory to web', fn() => $this->linkStorage());
         $this->register('var:unlink', 'Unlink the storage directory from web', fn() => $this->unlinkStorage());
         $this->register('run', 'Run dev server', function () {
-            $publicDir = dirname(__DIR__, 6) . '/web';
+            $publicDir = $this->rootPath . '/web';
             passthru('php -S 127.0.0.1:8000 -t "' . escapeshellarg($publicDir) . '"');
         });
     }
@@ -230,10 +248,7 @@ class CLI
         $reflection = new ReflectionFunction($commandAction);
         $params = $reflection->getParameters();
 
-        // FIX: Logic to inject options array if the closure expects it
         if (!empty($params)) {
-            // If the command is called with FEWER args than params,
-            // we inject options as the last argument.
             if (count($inputArgs) < count($params)) {
                 $inputArgs[] = $inputOptions;
             }
@@ -258,7 +273,8 @@ class CLI
 
         $uniqueCommands = [];
         foreach ($this->commands as $name => $details) {
-            if (str_starts_with($name, 'g:') || $name === 'queue:work' || str_starts_with($name, 'new:model')) continue;
+            if (str_starts_with($name, 'g:') || $name === 'queue:work' || str_starts_with($name, 'new:model'))
+                continue;
             $uniqueCommands[$name] = $details;
         }
         ksort($uniqueCommands);
@@ -286,12 +302,14 @@ class CLI
         $dirExists = !$checkDir || is_dir($checkDir);
 
         if ($exists && $dirExists) {
-            if ($verbose) echo "\033[32m$componentName already initialized. Table `$table` exists.\033[0m\n";
+            if ($verbose)
+                echo "\033[32m$componentName already initialized. Table `$table` exists.\033[0m\n";
             return;
         }
 
         if (!$exists) {
-            if ($verbose) echo "Creating `$table` table...\n";
+            if ($verbose)
+                echo "Creating `$table` table...\n";
             $pdo->exec($sql);
         }
 
@@ -299,7 +317,8 @@ class CLI
             mkdir($checkDir, 0755, true);
         }
 
-        if ($verbose) echo "\033[32m$componentName initialized successfully.\033[0m\n";
+        if ($verbose)
+            echo "\033[32m$componentName initialized successfully.\033[0m\n";
     }
 
     private function tableExists(PDO $pdo, string $table): bool

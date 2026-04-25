@@ -66,7 +66,7 @@ class EventRegistry extends ServiceRegistry
         $config = $container->get(Config::class);
         $mode = $config->get('app.mode', 'standard');
 
-        $this->discoverListeners($container, $dispatcher, $queue, $logger, $mode);
+        $this->discoverListeners($container, $dispatcher, $queue, $logger, $mode, $app->getRootPath());
     }
 
     /**
@@ -74,14 +74,12 @@ class EventRegistry extends ServiceRegistry
      */
     protected function discoverListeners(
         ContainerInterface $container,
-        EventDispatcher    $dispatcher,
-        ?QueueInterface    $queue,
-        LoggerInterface    $logger,
-        string             $mode
-    ): void
-    {
-        $rootPath = dirname(__DIR__, 6);
-
+        EventDispatcher $dispatcher,
+        ?QueueInterface $queue,
+        LoggerInterface $logger,
+        string $mode,
+        string $rootPath
+    ): void {
         if ($mode === 'domain') {
             $listenersDir = $rootPath . '/src/Domain';
         } else {
@@ -164,14 +162,13 @@ class EventRegistry extends ServiceRegistry
      */
     protected function registerListener(
         ContainerInterface $container,
-        EventDispatcher    $dispatcher,
-        ?QueueInterface    $queue,
-        LoggerInterface    $logger,
-        string             $eventClass,
-        string             $listenerClass,
-        string             $methodName = 'handle'
-    ): void
-    {
+        EventDispatcher $dispatcher,
+        ?QueueInterface $queue,
+        LoggerInterface $logger,
+        string $eventClass,
+        string $listenerClass,
+        string $methodName = 'handle'
+    ): void {
         $callableListener = function (object $event) use ($container, $listenerClass, $methodName, $queue, $logger) {
             $listenerInstance = $container->get($listenerClass);
 

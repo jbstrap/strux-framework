@@ -26,11 +26,10 @@ use Strux\Component\Attributes\Route as WebRoute;
 readonly class RouterLoader
 {
     public function __construct(
-        private Router             $router,
+        private Router $router,
         private ContainerInterface $container,
-        private LoggerInterface    $logger
-    )
-    {
+        private LoggerInterface $logger
+    ) {
     }
 
     /**
@@ -56,6 +55,7 @@ readonly class RouterLoader
         $context = $isApi ? 'API Controller' : 'Controller';
         foreach ($controllers as $controllerClass) {
             if (!class_exists($controllerClass)) {
+                dump($controllerClass);
                 $this->logger->warning("RouterLoader: $context class '$controllerClass' not found. Skipping.");
                 continue;
             }
@@ -159,7 +159,8 @@ readonly class RouterLoader
 
                 foreach ($basePrefixes as $basePrefix) {
                     $fullUri = '/' . trim(str_replace('//', '/', $basePrefix['path'] . '/' . $route->path), '/');
-                    if ($fullUri === '') $fullUri = '/';
+                    if ($fullUri === '')
+                        $fullUri = '/';
 
                     if (empty($route->methods)) {
                         error_log("RouterLoader: No HTTP methods for route '{$route->path}' in {$controllerClass}::{$method->getName()}");
