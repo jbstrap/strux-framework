@@ -102,7 +102,8 @@ class ModelBuilder
 
         foreach ($reflection->getProperties() as $property) {
             $colAttr = $property->getAttributes(Column::class)[0] ?? null;
-            if (!$colAttr) continue;
+            if (!$colAttr)
+                continue;
 
             $idAttr = $property->getAttributes(Id::class)[0] ?? null;
             $colInstance = $colAttr->newInstance();
@@ -135,14 +136,15 @@ class ModelBuilder
                     $queries[] = "ALTER TABLE `$tableName` RENAME COLUMN `$targetDbColumn` TO `$currentColName`;";
                 }
 
-                if ($this->needsModification($dbColumns[$targetDbColumn], $property, $colInstance, (bool)$idAttr)) {
+                if ($this->needsModification($dbColumns[$targetDbColumn], $property, $colInstance, (bool) $idAttr)) {
                     $queries[] = "ALTER TABLE `$tableName` MODIFY COLUMN $definition;";
                 }
             }
         }
 
         foreach ($dbColumns as $dbColName => $details) {
-            if (strtolower($dbColName) === 'id') continue;
+            if (strtolower($dbColName) === 'id')
+                continue;
 
             if (!in_array(strtolower($dbColName), $claimedDbColumns)) {
                 $queries[] = "-- SAFETY WARNING: Potentially destructive action commented out.";
@@ -156,7 +158,7 @@ class ModelBuilder
     private function buildColumnDefinition(ReflectionProperty $property, Column $columnAttr, ?Id $idAttr): string
     {
         $colName = $columnAttr->name ?? $property->getName();
-        $type = $this->mapType($columnAttr->type, $property->getType()?->getName(), $columnAttr->length, $columnAttr->enums);
+        $type = $this->mapType($columnAttr->type, $property->getType()?->getName(), $columnAttr->length, $columnAttr->enums, $columnAttr->precision, $columnAttr->scale);
 
         $definition = "`$colName` $type";
 
@@ -198,13 +200,13 @@ class ModelBuilder
         if (is_null($value)) {
             return 'NULL';
         }
-        return (string)$value;
+        return (string) $value;
     }
 
     private function needsModification(array $dbDetails, ReflectionProperty $property, Column $columnAttr, bool $isPk): bool
     {
         $phpType = $property->getType()?->getName();
-        $sqlType = $this->mapType($columnAttr->type, $phpType, $columnAttr->length, $columnAttr->enums);
+        $sqlType = $this->mapType($columnAttr->type, $phpType, $columnAttr->length, $columnAttr->enums, $columnAttr->precision, $columnAttr->scale);
 
         $isNullable = ($columnAttr->nullable || $property->getType()?->allowsNull()) && !$isPk;
 
@@ -215,26 +217,42 @@ class ModelBuilder
         if (str_starts_with(strtolower($sqlType), 'enum')) {
             $cleanCurrent = str_replace(' ', '', strtolower($currentType));
             $cleanSql = str_replace(' ', '', strtolower($sqlType));
-            if ($cleanCurrent !== $cleanSql) return true;
+            if ($cleanCurrent !== $cleanSql)
+                return true;
         } elseif (strtolower($currentType) !== strtolower($sqlType)) {
             $cleanCurrent = preg_replace('/\(.*?\)/', '', strtolower($currentType));
             $cleanSql = preg_replace('/\(.*?\)/', '', strtolower($sqlType));
 
             // Handle unsigned difference
-            $cleanCurrent = str_replace(' unsigned', '', $cleanCurrent);
-            $cleanSqlBase = str_replace(' unsigned', '', $cleanSql);
+            $cleanCurrent = trim(str_replace('unsigned', '', $cleanCurrent));
+            $cleanSqlBase = trim(str_replace('unsigned', '', $cleanSql));
 
-            if ($cleanCurrent !== $cleanSqlBase) return true;
+            if ($cleanCurrent !== $cleanSqlBase)
+                return true;
 
             // Check signedness mismatch
             $dbUnsigned = str_contains(strtolower($currentType), 'unsigned');
             $sqlUnsigned = str_contains(strtolower($sqlType), 'unsigned');
-            if ($dbUnsigned !== $sqlUnsigned) return true;
+            if ($dbUnsigned !== $sqlUnsigned)
+                return true;
+
+            // BUG FIX: If base types match but full types differ, lengths/precisions might have changed.
+            // Integer display widths (like INT(11) vs INT) can often be ignored, 
+            // but for VARCHAR, CHAR, and DECIMAL, the length/precision is critical.
+            $lengthMatters = in_array($cleanCurrent, ['varchar', 'char', 'decimal', 'float', 'double']);
+            if ($lengthMatters) {
+                // Ensure spaces are stripped for a fair comparison like "decimal(10, 2)" vs "decimal(10,2)"
+                $normalizedCurrent = str_replace(' ', '', strtolower($currentType));
+                $normalizedSql = str_replace(' ', '', strtolower($sqlType));
+                if ($normalizedCurrent !== $normalizedSql)
+                    return true;
+            }
         }
 
         // 2. Nullable Check
         $dbIsNullable = ($currentNull === 'YES');
-        if ($dbIsNullable !== $isNullable) return true;
+        if ($dbIsNullable !== $isNullable)
+            return true;
 
         // 3. Timestamp Checks
         if ($columnAttr->onUpdateCurrentTimestamp) {
@@ -248,7 +266,8 @@ class ModelBuilder
 
     private function getSchemaDetails(string $tableName): array
     {
-        if (!$this->db) return [];
+        if (!$this->db)
+            return [];
 
         try {
             $stmt = $this->db->query("DESCRIBE `$tableName`");
@@ -269,7 +288,8 @@ class ModelBuilder
 
     private function tableExists(string $table): bool
     {
-        if (!$this->db) return false;
+        if (!$this->db)
+            return false;
 
         try {
             $result = $this->db->query("SHOW TABLES LIKE '$table'");
@@ -279,7 +299,7 @@ class ModelBuilder
         }
     }
 
-    private function mapType(?Field $field, ?string $phpType, int $length = 255, ?array $enums = null): string
+    private function mapType(?Field $field, ?string $phpType, int $length = 255, ?array $enums = null, int $precision = 10, int $scale = 2): string
     {
         if ($enums !== null || $field === Field::enum) {
             if ($enums) {
@@ -312,7 +332,7 @@ class ModelBuilder
             Field::mediumIntegerUnsigned => "MEDIUMINT UNSIGNED",
             Field::bigInteger => "BIGINT",
             Field::bigIntegerUnsigned => "BIGINT UNSIGNED",
-            Field::decimal => "DECIMAL(10,2)",
+            Field::decimal => "DECIMAL($precision,$scale)",
             Field::float => "FLOAT",
             Field::double => "DOUBLE",
             Field::boolean => "TINYINT(1)",

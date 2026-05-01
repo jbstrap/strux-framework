@@ -52,4 +52,9 @@ enum Field: string
     case binary = 'binary';             // BLOB
     case uuid = 'uuid';                 // CHAR(36)
     case ulid = 'ulid';                 // CHAR(26)
+
+    public static function decimal(int $precision = 10, int $scale = 2): string
+    {
+        return "decimal($precision, $scale)";
+    }
 }

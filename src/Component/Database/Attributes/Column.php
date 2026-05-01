@@ -14,6 +14,8 @@ readonly class Column
         public ?string $name = null,
         public ?Field  $type = null, // Changed from Field::integer to null for auto-inference
         public int     $length = 255,
+        public int     $precision = 10,
+        public int     $scale = 2,
         public bool    $nullable = false,
         public bool    $unique = false,
         public mixed   $default = null,

@@ -86,17 +86,16 @@ if (!function_exists('redirect')) {
 if (!function_exists('redirectWith')) {
     function redirectWith(
         string $uri,
-        array  $messages = [],
-        int    $status = 302,
-        bool   $isRouteName = false,
-        array  $routeParams = []
-    ): Response
-    {
+        array $messages = [],
+        int $status = 302,
+        bool $isRouteName = false,
+        array $routeParams = []
+    ): Response {
         /** @var FlashInterface $flash */
         $flash = ContainerBridge::get(FlashInterface::class);
         if ($flash) {
             foreach ($messages as $type => $message) {
-                $flash->set((string)$type, $message);
+                $flash->set((string) $type, $message);
             }
         } elseif (!empty($messages)) {
             if (ContainerBridge::has(LoggerInterface::class)) {
@@ -116,7 +115,8 @@ if (!function_exists('redirectWith')) {
             } catch (InvalidArgumentException $e) {
                 ContainerBridge::get(LoggerInterface::class)
                     ->error("Failed to generate route for redirectWith: " . $e->getMessage(), [
-                        'route_name' => $uri, 'exception' => $e
+                        'route_name' => $uri,
+                        'exception' => $e
                     ]);
                 $targetUri = '/';
             }
@@ -128,11 +128,10 @@ if (!function_exists('redirectWith')) {
 if (!function_exists('to_route')) {
     function to_route(
         string $routeName,
-        array  $parameters = [],
-        int    $status = 302,
-        array  $flashMessages = []
-    ): Response
-    {
+        array $parameters = [],
+        int $status = 302,
+        array $flashMessages = []
+    ): Response {
         return redirectWith(
             uri: $routeName,
             messages: $flashMessages,
@@ -147,7 +146,7 @@ if (!function_exists('route')) {
     /**
      * Generate a URL for a named route.
      */
-    function route(string $routeName, array $queryParams = []): string
+    function route(string $routeName, array $queryParams = [], string $method = 'GET'): string
     {
         if (!ContainerBridge::has(Router::class)) {
             ContainerBridge::get(LoggerInterface::class)
@@ -156,18 +155,17 @@ if (!function_exists('route')) {
         }
         /** @var Router $router */
         $router = ContainerBridge::get(Router::class);
-        return url($router->route($routeName, $queryParams));
+        return url($router->route($routeName, $queryParams, $method));
     }
 }
 
 if (!function_exists('json')) {
     function json(
         mixed $data,
-        int   $status = 200,
+        int $status = 200,
         array $headers = [],
-        int   $encodingOptions = 0
-    ): Response
-    {
+        int $encodingOptions = 0
+    ): Response {
         return response()->json($data, $status, $headers, $encodingOptions);
     }
 }
@@ -185,7 +183,7 @@ if (!function_exists('env')) {
         if ($value === false) {
             return $default;
         }
-        return match (strtolower((string)$value)) {
+        return match (strtolower((string) $value)) {
             'true', '(true)' => true,
             'false', '(false)' => false,
             'empty', '(empty)' => '',
@@ -355,7 +353,7 @@ if (!function_exists('es_')) {
     function es_(mixed $value = null): string|DateTime
     {
         if ($value instanceof SafeHtml) {
-            return (string)$value;
+            return (string) $value;
         }
 
         if ($value instanceof DateTime || $value instanceof DateTimeImmutable) {
@@ -365,14 +363,14 @@ if (!function_exists('es_')) {
         if ($value === null || $value === '') {
             return '';
         }
-        return htmlspecialchars((string)$value, ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE, 'UTF-8');
+        return htmlspecialchars((string) $value, ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE, 'UTF-8');
     }
 }
 
 if (!function_exists('safe_')) {
     function safe_(mixed $value = null): SafeHtml
     {
-        $html = $value === null ? '' : (string)$value;
+        $html = $value === null ? '' : (string) $value;
         $allowedTags = '<p><a><br><strong><em><li><ul><ol><b><i><u><span><div><h1><h2><h3><h4><h5><h6><small><blockquote><code><pre><img><hr><table><thead><tbody><tr><th><td>';
         $cleanHtml = strip_tags($html, $allowedTags);
         $cleanHtml = preg_replace('/on\w+="[^"]*"/i', '', $cleanHtml);
@@ -384,12 +382,14 @@ if (!function_exists('formatDateTime')) {
     function formatDateTime($value, string $format = 'l, F jS, Y (H:i)'): string
     {
         try {
-            if (empty($value)) return '';
-            $timestamp = is_numeric($value) ? (int)$value : strtotime((string)$value);
-            if ($timestamp === false) return (string)$value;
+            if (empty($value))
+                return '';
+            $timestamp = is_numeric($value) ? (int) $value : strtotime((string) $value);
+            if ($timestamp === false)
+                return (string) $value;
             return date($format, $timestamp);
         } catch (Throwable $e) {
-            return (string)$value;
+            return (string) $value;
         }
     }
 }
@@ -426,7 +426,8 @@ if (!function_exists('time_ago')) {
             }
         }
 
-        if (!$full) $string = array_slice($string, 0, 1);
+        if (!$full)
+            $string = array_slice($string, 0, 1);
         return $string ? implode(', ', $string) . ' ago' : 'just now';
     }
 }
