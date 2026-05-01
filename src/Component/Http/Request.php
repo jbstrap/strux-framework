@@ -367,17 +367,25 @@ class Request
         $path = $this->path();
         $normalizedPattern = trim($pattern, '/');
         $regexPattern = str_replace('*', '[^/]*', $normalizedPattern);
-        return (bool)preg_match("#^$regexPattern$#i", $path);
+        return (bool) preg_match("#^$regexPattern$#i", $path);
     }
 
     /**
-     * @return object|null
+     * Decode the request body as JSON.
+     *
+     * @param bool $assoc When true, returns associative arrays instead of objects.
+     * @return object|array|null
      */
-    public function getJson(): ?object
+    public function getJson(bool $assoc = false): object|array|null
     {
         $parsedBody = $this->request->getParsedBody();
-        if (is_object($parsedBody)) {
-            return $parsedBody;
+        if ($parsedBody !== null) {
+            if ($assoc) {
+                return is_array($parsedBody) ? $parsedBody : (array) $parsedBody;
+            }
+            if (is_object($parsedBody) || is_array($parsedBody)) {
+                return $parsedBody;
+            }
         }
 
         $body = $this->request->getBody();
@@ -394,9 +402,8 @@ class Request
             return null;
         }
 
-
-        $jsonData = json_decode($contents);
-        if (json_last_error() === JSON_ERROR_NONE && is_object($jsonData)) {
+        $jsonData = json_decode($contents, $assoc);
+        if (json_last_error() === JSON_ERROR_NONE && (is_object($jsonData) || is_array($jsonData))) {
             return $jsonData;
         }
 
@@ -439,14 +446,15 @@ class Request
      */
     public function castValue(mixed $value, string $type): mixed
     {
-        if ($value === null) return null;
+        if ($value === null)
+            return null;
 
         return match (strtolower($type)) {
-            'int', 'integer' => (int)$value,
-            'str', 'string' => (string)$value,
+            'int', 'integer' => (int) $value,
+            'str', 'string' => (string) $value,
             'bool', 'boolean' => filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
-            'float', 'double' => (float)$value,
-            'array' => (array)$value,
+            'float', 'double' => (float) $value,
+            'array' => (array) $value,
             default => $value
         };
     }
