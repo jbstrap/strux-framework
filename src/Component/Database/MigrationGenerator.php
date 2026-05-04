@@ -89,7 +89,7 @@ class MigrationGenerator
             $builder = new ModelBuilder($modelClass, $this->db, $dbConfig);
             $sql = $builder->generateSql();
             if (!empty($sql)) {
-                $tableQueries = array_merge($tableQueries, (array)$sql);
+                $tableQueries = array_merge($tableQueries, (array) $sql);
             }
 
             // 2. Pivots
@@ -207,12 +207,12 @@ class MigrationGenerator
                 $classPath = str_replace(['/', '.php'], ['\\', ''], $relativePath);
                 $className = "App\\" . $classPath;
 
-                echo "Scanning model: $className\n";
                 if (class_exists($className)) {
                     try {
                         $reflection = new ReflectionClass($className);
                         // Check if it's instantiable and has the #[Table] attribute
                         if (!$reflection->isAbstract() && !empty($reflection->getAttributes(Table::class))) {
+                            echo "Scanning model: $className\n";
                             $models[] = $className;
                         }
                     } catch (ReflectionException $e) {

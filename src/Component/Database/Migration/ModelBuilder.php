@@ -158,7 +158,7 @@ class ModelBuilder
     private function buildColumnDefinition(ReflectionProperty $property, Column $columnAttr, ?Id $idAttr): string
     {
         $colName = $columnAttr->name ?? $property->getName();
-        $type = $this->mapType($columnAttr->type, $property->getType()?->getName(), $columnAttr->length, $columnAttr->enums, $columnAttr->precision, $columnAttr->scale);
+        $type = $this->mapType($columnAttr->type, ($property->getType() instanceof \ReflectionNamedType ? $property->getType()->getName() : ($property->getType() instanceof \ReflectionUnionType ? $property->getType()->getTypes()[0]->getName() : (string) $property->getType())), $columnAttr->length, $columnAttr->enums, $columnAttr->precision, $columnAttr->scale);
 
         $definition = "`$colName` $type";
 
@@ -205,7 +205,7 @@ class ModelBuilder
 
     private function needsModification(array $dbDetails, ReflectionProperty $property, Column $columnAttr, bool $isPk): bool
     {
-        $phpType = $property->getType()?->getName();
+        $phpType = ($property->getType() instanceof \ReflectionNamedType ? $property->getType()->getName() : ($property->getType() instanceof \ReflectionUnionType ? $property->getType()->getTypes()[0]->getName() : (string) $property->getType()));
         $sqlType = $this->mapType($columnAttr->type, $phpType, $columnAttr->length, $columnAttr->enums, $columnAttr->precision, $columnAttr->scale);
 
         $isNullable = ($columnAttr->nullable || $property->getType()?->allowsNull()) && !$isPk;
