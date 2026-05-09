@@ -13,6 +13,8 @@ use Psr\Container\NotFoundExceptionInterface;
 use ReflectionException;
 use Strux\Bootstrapping\Registry\AppRegistry;
 use Strux\Component\Config\Config;
+use Strux\Component\Config\DirectoryInterface;
+use Strux\Component\Config\DirectoryResolver;
 use Strux\Foundation\Application;
 use Strux\Foundation\Container;
 use Strux\Support\ContainerBridge;
@@ -29,11 +31,12 @@ class Kernel
      *
      * @param string $rootPath The root path of the application.
      * @param string|null $appClass The Application class to instantiate (defaults to Strux\Foundation\Application).
+     * @param array<string, string> $directories User-defined directory overrides.
      * @return Application The bootstrapped application instance.
      * @throws ContainerExceptionInterface
      * @throws NotFoundExceptionInterface|ReflectionException
      */
-    public static function create(string $rootPath, ?string $appClass = null): Application
+    public static function create(string $rootPath, ?string $appClass = null, array $directories = []): Application
     {
         /**
          * -------------------------------------------------------------------------
@@ -78,6 +81,22 @@ class Kernel
 
         /**
          * -------------------------------------------------------------------------
+         * Register Directory Resolver
+         * -------------------------------------------------------------------------
+         *
+         * Merge directories from three sources (last wins):
+         * 1. Framework defaults (built into DirectoryResolver)
+         * 2. User's Directories config class (src/Config/Directories.php)
+         * 3. Inline $directories parameter passed to Kernel::create()
+         */
+        $configDirectories = self::loadDirectoriesConfig($rootPath);
+        $mergedDirectories = array_merge($configDirectories, $directories);
+
+        $directoryResolver = new DirectoryResolver($rootPath, $mergedDirectories);
+        $container->singleton(DirectoryInterface::class, $directoryResolver);
+
+        /**
+         * -------------------------------------------------------------------------
          * Kernel The Framework
          * -------------------------------------------------------------------------
          */
@@ -100,5 +119,39 @@ class Kernel
         $framework->init($app);
 
         return $app;
+    }
+
+    /**
+     * Load user-defined directory config from src/Config/Directories.php if it exists.
+     *
+     * @return array<string, string>
+     */
+    private static function loadDirectoriesConfig(string $rootPath): array
+    {
+        $configFile = $rootPath . '/src/Config/Directories.php';
+
+        if (!file_exists($configFile)) {
+            return [];
+        }
+
+        $returned = require $configFile;
+
+        if (is_object($returned) && method_exists($returned, 'toArray')) {
+            return $returned->toArray();
+        }
+
+        if (is_array($returned)) {
+            return $returned;
+        }
+
+        // Try class-based approach
+        if (class_exists('App\\Config\\Directories')) {
+            $instance = new \App\Config\Directories();
+            if (method_exists($instance, 'toArray')) {
+                return $instance->toArray();
+            }
+        }
+
+        return [];
     }
 }

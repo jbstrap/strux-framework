@@ -23,7 +23,6 @@ class ApcuCache implements CacheInterface
         if (!$apcuAvailable || !extension_loaded('apcu') || !ini_get('apc.enabled')) {
             throw new CacheException('APCu extension is not loaded or not enabled.');
         }
-        // Note: For CLI, apc.enable_cli must be On in php.ini.
 
         $this->logger = $logger;
         $this->prefix = $config['prefix'] ?? 'apcu_default_';
@@ -129,7 +128,7 @@ class ApcuCache implements CacheInterface
         $internalKeys = [];
         $originalKeysMap = [];
         foreach ($keys as $key) {
-            $sKey = (string)$key;
+            $sKey = (string) $key;
             $this->validateKey($sKey);
             $internalKey = $this->getInternalKey($sKey);
             $internalKeys[] = $internalKey;
@@ -174,7 +173,8 @@ class ApcuCache implements CacheInterface
             if ($ttl <= 0) {
                 // If TTL is <=0, PSR-16 implies deletion. We'll delete them individually.
                 $keysToDelete = [];
-                foreach ($values as $key => $value) $keysToDelete[] = (string)$key;
+                foreach ($values as $key => $value)
+                    $keysToDelete[] = (string) $key;
                 return $this->deleteMultiple($keysToDelete);
             }
             $durationSeconds = $ttl;
@@ -183,12 +183,13 @@ class ApcuCache implements CacheInterface
         }
 
         foreach ($values as $key => $value) {
-            $sKey = (string)$key;
+            $sKey = (string) $key;
             $this->validateKey($sKey);
             $entries[$this->getInternalKey($sKey)] = $value;
         }
 
-        if (empty($entries)) return true;
+        if (empty($entries))
+            return true;
 
         $errors = apcu_store($entries, null, $durationSeconds); // Second param null when $entries are an array
 
@@ -205,11 +206,12 @@ class ApcuCache implements CacheInterface
     {
         $internalKeys = [];
         foreach ($keys as $key) {
-            $sKey = (string)$key;
+            $sKey = (string) $key;
             $this->validateKey($sKey);
             $internalKeys[] = $this->getInternalKey($sKey);
         }
-        if (empty($internalKeys)) return true;
+        if (empty($internalKeys))
+            return true;
 
         // apcu_delete can take an array of keys or an APCUIterator
         $result = apcu_delete($internalKeys); // Returns array of failed keys or true on success

@@ -11,6 +11,7 @@ use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Strux\Bootstrapping\Registry\ServiceRegistry;
 use Strux\Component\Config\Config;
+use Strux\Component\Config\DirectoryInterface;
 use Strux\Component\Http\Middleware\Dispatcher as MiddlewareDispatcher;
 use Strux\Component\Http\Psr7\ServerRequestCreator;
 use Strux\Component\Http\ResponseEmitter;
@@ -62,10 +63,29 @@ class Application
     }
 
     /**
-     * Get the log directory from the logger if supported.
+     * Get a directory path by key from the DirectoryResolver.
+     *
+     * @param string $key The directory key (e.g., 'controllers', 'views', 'cache')
+     * @return string The absolute path
+     */
+    public function getDirectory(string $key): string
+    {
+        if ($this->container->has(DirectoryInterface::class)) {
+            return $this->container->get(DirectoryInterface::class)->get($key);
+        }
+
+        throw new RuntimeException('DirectoryInterface service not found in container.');
+    }
+
+    /**
+     * Get the log directory.
      */
     public function getLogDir(): string
     {
+        if ($this->container->has(DirectoryInterface::class)) {
+            return $this->container->get(DirectoryInterface::class)->get('logs');
+        }
+
         if ($this->container->has(Config::class)) {
             return $this->container->get(Config::class)->get('app.log_dir', $this->rootPath . '/var/logs');
         }
@@ -74,10 +94,13 @@ class Application
     }
 
     /**
-     * Get the log directory from the logger if supported.
+     * Get the cache directory.
      */
     public function getCacheDir(): string
     {
+        if ($this->container->has(DirectoryInterface::class)) {
+            return $this->container->get(DirectoryInterface::class)->get('cache');
+        }
 
         if ($this->container->has(Config::class)) {
             return $this->container->get(Config::class)->get('app.cache_dir', $this->rootPath . '/var/cache');
@@ -91,6 +114,10 @@ class Application
      */
     public function getViewDir(): string
     {
+        if ($this->container->has(DirectoryInterface::class)) {
+            return $this->container->get(DirectoryInterface::class)->get('views');
+        }
+
         if ($this->container->has(Config::class)) {
             return $this->container->get(Config::class)->get('app.view_dir', $this->rootPath . '/templates');
         }

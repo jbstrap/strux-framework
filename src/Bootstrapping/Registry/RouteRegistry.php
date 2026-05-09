@@ -10,7 +10,7 @@ use Psr\Container\NotFoundExceptionInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use ReflectionException;
-use Strux\Component\Config\Config;
+use Strux\Component\Config\DirectoryInterface;
 use Strux\Component\Routing\ParameterResolver;
 use Strux\Component\Routing\RouteDispatcher;
 use Strux\Component\Routing\Router;
@@ -64,37 +64,25 @@ class RouteRegistry extends ServiceRegistry
         $router = $app->getRouter();
         /** @var RouterLoader $routerLoader */
         $routerLoader = $this->container->get(RouterLoader::class);
-        $config = $this->container->get(Config::class);
 
-        $legacyRoutesPath = $app->getRootPath() . '/etc/routes/web.php';
+        /** @var DirectoryInterface $dirs */
+        $dirs = $this->container->get(DirectoryInterface::class);
+
+        // 1. Load legacy route files
+        $legacyRoutesPath = $dirs->get('routes') . '/web.php';
         if (file_exists($legacyRoutesPath)) {
             require $legacyRoutesPath;
-            /*if (is_callable($webRoutes)) {
-                $webRoutes($router);
-            }*/
-        }
-
-        $mode = $config->get('app.mode');
-
-        if ($mode === 'standard') {
-            // --- Standard Mode Structure ---
-            $webControllerDir = $app->getRootPath() . '/src/Controllers';
-            $apiControllerDir = $app->getRootPath() . '/src/Controllers/Api';
-        } else {
-            // --- Domain Mode Structure (Default) ---
-            $webControllerDir = $app->getRootPath() . '/src/Http/Controllers/Web';
-            $apiControllerDir = $app->getRootPath() . '/src/Http/Controllers/Api';
         }
 
         // 2. Auto-Discover Attribute-Based Web Controllers
+        $webControllerDir = $dirs->get('controllers');
         if (is_dir($webControllerDir)) {
-            // Scans for #[Route] attributes
             $routerLoader->loadFromDirectory($webControllerDir, isApi: false);
         }
 
         // 3. Auto-Discover Attribute-Based API Controllers
+        $apiControllerDir = $dirs->get('apiControllers');
         if (is_dir($apiControllerDir)) {
-            // Scans for #[ApiRoute] attributes
             $routerLoader->loadFromDirectory($apiControllerDir, isApi: true);
         }
     }

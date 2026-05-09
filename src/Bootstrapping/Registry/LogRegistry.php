@@ -12,6 +12,7 @@ use Monolog\Logger;
 use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 use Strux\Component\Log\CliLogger;
+use Strux\Component\Config\DirectoryInterface;
 use Strux\Foundation\Application;
 use Strux\Support\Bridge\Config;
 
@@ -42,6 +43,13 @@ class LogRegistry extends ServiceRegistry
 
     public function init(Application $app): void
     {
-        Config::set('app.log_dir', $app->getRootPath() . '/var/logs');
+        // Use DirectoryResolver if available, fallback to hardcoded path
+        if ($app->getContainer()->has(DirectoryInterface::class)) {
+            $logDir = $app->getContainer()->get(DirectoryInterface::class)->get('logs');
+        } else {
+            $logDir = $app->getRootPath() . '/var/logs';
+        }
+
+        Config::set('app.log_dir', $logDir);
     }
 }

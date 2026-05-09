@@ -14,6 +14,7 @@ use ReflectionClass;
 use ReflectionException;
 use ReflectionNamedType;
 use Strux\Component\Config\Config;
+use Strux\Component\Config\DirectoryInterface;
 use Strux\Component\Events\Attributes\Listener;
 use Strux\Component\Events\CallQueuedListener;
 use Strux\Component\Events\EventDispatcher;
@@ -62,11 +63,10 @@ class EventRegistry extends ServiceRegistry
         /** @var QueueInterface|null $queue */
         $queue = $container->has(QueueInterface::class) ? $container->get(QueueInterface::class) : null;
 
-        /** @var Config $config */
-        $config = $container->get(Config::class);
-        $mode = $config->get('app.mode', 'standard');
+        /** @var DirectoryInterface $dirs */
+        $dirs = $container->get(DirectoryInterface::class);
 
-        $this->discoverListeners($container, $dispatcher, $queue, $logger, $mode, $app->getRootPath());
+        $this->discoverListeners($container, $dispatcher, $queue, $logger, $dirs->get('listeners'));
     }
 
     /**
@@ -77,20 +77,13 @@ class EventRegistry extends ServiceRegistry
         EventDispatcher $dispatcher,
         ?QueueInterface $queue,
         LoggerInterface $logger,
-        string $mode,
-        string $rootPath
+        string $listenersDir
     ): void {
-        if ($mode === 'domain') {
-            $listenersDir = $rootPath . '/src/Domain';
-        } else {
-            $listenersDir = $rootPath . '/src/Listener';
-        }
-
         if (!is_dir($listenersDir)) {
             return;
         }
 
-        $classes = ClassFinder::findClasses($listenersDir, 'App');
+        $classes = ClassFinder::findClasses($listenersDir);
 
         foreach ($classes as $className) {
             if (!class_exists($className)) {
@@ -109,11 +102,11 @@ class EventRegistry extends ServiceRegistry
 
             $classAttributes = $reflection->getAttributes(Listener::class);
             $methodAttributes = [];
-            
+
             if ($reflection->hasMethod('handle')) {
                 $methodAttributes = $reflection->getMethod('handle')->getAttributes(Listener::class);
             }
-            
+
             $attributes = array_merge($classAttributes, $methodAttributes);
 
             if (!empty($attributes)) {

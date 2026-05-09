@@ -7,6 +7,7 @@ namespace Strux\Bootstrapping\Registry;
 use Psr\Container\ContainerInterface;
 use ReflectionClass;
 use ReflectionException;
+use Strux\Component\Config\DirectoryInterface;
 use Strux\Foundation\Application;
 use Strux\Support\ContainerBridge;
 
@@ -81,7 +82,7 @@ class AppRegistry extends ServiceRegistry
      */
     protected function instantiateAndBuild(string|object $registry): void
     {
-        /**  * @var ServiceRegistry $registry */
+        /** @var ServiceRegistry $registry */
         // Case 1: It's a class string (Standard Registry)
         if (is_string($registry)) {
             if (!class_exists($registry)) {
@@ -102,10 +103,8 @@ class AppRegistry extends ServiceRegistry
         // Execute Binding Logic
         if (method_exists($registry, 'build')) {
             $registry->build();
-        } elseif (method_exists($registry, 'register')) {
-            $registry->register();
         } else {
-            throw new \RuntimeException("ServiceRegistry class {$registry} must implement a build() or register() method.");
+            throw new \RuntimeException("ServiceRegistry class " . get_class($registry) . " must implement a build() method.");
         }
     }
 
@@ -139,8 +138,14 @@ class AppRegistry extends ServiceRegistry
      */
     protected function discoverUserRegistries(): void
     {
-        // Assume standard structure: ROOT_PATH/src/Registry maps to App\Registry
-        $registryDir = (defined('ROOT_PATH') ? ROOT_PATH : getcwd()) . '/src/Registry';
+        // Use the DirectoryResolver if available, fallback to convention
+        if ($this->container->has(DirectoryInterface::class)) {
+            /** @var DirectoryInterface $dirs */
+            $dirs = $this->container->get(DirectoryInterface::class);
+            $registryDir = $dirs->get('registry');
+        } else {
+            $registryDir = (defined('ROOT_PATH') ? ROOT_PATH : getcwd()) . '/src/Registry';
+        }
 
         if (!is_dir($registryDir)) {
             return;
