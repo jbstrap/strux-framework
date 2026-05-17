@@ -24,9 +24,18 @@ trait HasSoftDeletes
      */
     public function delete(): bool
     {
+        $this->fireModelEvent(new \Strux\Component\Model\Events\Deleting($this));
+
         $column = $this->getSoftDeleteColumn();
         $this->{$column} = date('Y-m-d H:i:s');
-        return $this->save();
+        
+        $result = $this->save();
+
+        if ($result) {
+            $this->fireModelEvent(new \Strux\Component\Model\Events\Deleted($this));
+        }
+
+        return $result;
     }
 
     /**
@@ -34,9 +43,18 @@ trait HasSoftDeletes
      */
     public function restore(): bool
     {
+        $this->fireModelEvent(new \Strux\Component\Model\Events\Restoring($this));
+
         $column = $this->getSoftDeleteColumn();
         $this->{$column} = null;
-        return $this->save();
+        
+        $result = $this->save();
+
+        if ($result) {
+            $this->fireModelEvent(new \Strux\Component\Model\Events\Restored($this));
+        }
+
+        return $result;
     }
 
     /**

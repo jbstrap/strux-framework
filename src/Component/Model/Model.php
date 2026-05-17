@@ -18,6 +18,7 @@ use Strux\Component\Database\Attributes\Table;
 use Strux\Component\Exceptions\DatabaseException;
 use Strux\Component\Model\Attributes\RelationAttribute;
 use Strux\Component\Model\Behavior\HasAttributes;
+use Strux\Component\Model\Behavior\HasEvents;
 use Strux\Component\Model\Behavior\HasQueryBuilder;
 use Strux\Component\Model\Behavior\HasRelationships;
 use Strux\Component\Model\Behavior\HasTimestamps;
@@ -26,7 +27,7 @@ use Throwable;
 
 abstract class Model
 {
-    use HasAttributes, HasQueryBuilder, HasRelationships, HasTimestamps;
+    use HasAttributes, HasEvents, HasQueryBuilder, HasRelationships, HasTimestamps;
 
     protected ?PDO $db = null;
     private ?string $_tableName = null;
@@ -125,6 +126,9 @@ abstract class Model
         $instance->_exists = true;
         $instance->_original = $data;
         $instance->_isQueryBuilderInstance = false;
+
+        $instance->fireModelEvent(new \Strux\Component\Model\Events\Retrieved($instance));
+
         return $instance;
     }
 
@@ -159,7 +163,8 @@ abstract class Model
                     $this->setRelation($key, $result);
                     return $result;
                 }
-                if ($prop->isInitialized($this)) return $this->{$key};
+                if ($prop->isInitialized($this))
+                    return $this->{$key};
             }
         }
 
@@ -168,16 +173,19 @@ abstract class Model
 
     public function getTable(): string
     {
-        if ($this->_tableName !== null) return $this->_tableName;
+        if ($this->_tableName !== null)
+            return $this->_tableName;
         $attributes = $this->reflection()->getAttributes(Table::class);
-        if (!empty($attributes)) return $this->_tableName = $attributes[0]->newInstance()->name;
+        if (!empty($attributes))
+            return $this->_tableName = $attributes[0]->newInstance()->name;
         $className = $this->reflection()->getShortName();
         return $this->_tableName = strtolower(preg_replace('/(?<=[a-z0-9])([A-Z])/', '_$1', $className)) . 's';
     }
 
     public function getPrimaryKey(): string
     {
-        if ($this->_primaryKeyName !== null) return $this->_primaryKeyName;
+        if ($this->_primaryKeyName !== null)
+            return $this->_primaryKeyName;
         foreach ($this->reflection()->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
             if (!empty($property->getAttributes(Id::class))) {
                 return $this->_primaryKeyName = $property->getName();
@@ -218,7 +226,10 @@ abstract class Model
 
     public function save(): bool
     {
-        if ($this->_isQueryBuilderInstance) throw new RuntimeException("Cannot call save() on query builder.");
+        if ($this->_isQueryBuilderInstance)
+            throw new RuntimeException("Cannot call save() on query builder.");
+
+        $this->fireModelEvent(new \Strux\Component\Model\Events\Saving($this));
 
         $attributes = $this->_getPublicPropertiesForDb();
         $this->handleTimestamps($attributes);
@@ -231,6 +242,7 @@ abstract class Model
 
         if ($success) {
             $this->_original = $this->_getPublicPropertiesForDb();
+            $this->fireModelEvent(new \Strux\Component\Model\Events\Saved($this));
         }
         return $success;
     }
@@ -259,10 +271,14 @@ abstract class Model
             }
         }
 
-        if (empty($dirty)) return true;
+        if (empty($dirty))
+            return true;
+
+        $this->fireModelEvent(new \Strux\Component\Model\Events\Updating($this));
 
         $pkValue = $this->{$this->getPrimaryKey()} ?? null;
-        if ($pkValue === null) throw new RuntimeException("Cannot update without primary key.");
+        if ($pkValue === null)
+            throw new RuntimeException("Cannot update without primary key.");
 
         $setClauses = array_map(fn($col) => "`{$col}` = ?", array_keys($dirty));
         $bindings = array_values($dirty);
@@ -270,7 +286,13 @@ abstract class Model
 
         $sql = "UPDATE `{$this->getTable()}` SET " . implode(', ', $setClauses) . " WHERE `{$this->getPrimaryKey()}` = ?";
         $stmt = $this->_execute($sql, $bindings);
-        return $stmt->rowCount() >= 0;
+        $success = $stmt->rowCount() >= 0;
+
+        if ($success) {
+            $this->fireModelEvent(new \Strux\Component\Model\Events\Updated($this));
+        }
+
+        return $success;
     }
 
     /**
@@ -294,7 +316,10 @@ abstract class Model
             unset($attributesToSave[$this->getPrimaryKey()]);
         }
 
-        if (empty($attributesToSave)) return false;
+        if (empty($attributesToSave))
+            return false;
+
+        $this->fireModelEvent(new \Strux\Component\Model\Events\Creating($this));
 
         $columns = array_keys($attributesToSave);
         $placeholders = implode(', ', array_fill(0, count($columns), '?'));
@@ -306,23 +331,31 @@ abstract class Model
         $id = $this->db->lastInsertId();
         if ($id && property_exists($this, $this->getPrimaryKey())) {
             if (!isset($attributesToSave[$this->getPrimaryKey()]) || $attributesToSave[$this->getPrimaryKey()] === null) {
-                $this->{$this->getPrimaryKey()} = is_numeric($id) ? (int)$id : $id;
+                $this->{$this->getPrimaryKey()} = is_numeric($id) ? (int) $id : $id;
             }
         }
         $this->_exists = true;
+
+        $this->fireModelEvent(new \Strux\Component\Model\Events\Created($this));
+
         return true;
     }
 
     public function delete(): bool
     {
-        if ($this->_isQueryBuilderInstance) throw new RuntimeException("Cannot call delete() on query builder.");
-        if (!$this->_exists) return false;
+        if ($this->_isQueryBuilderInstance)
+            throw new RuntimeException("Cannot call delete() on query builder.");
+        if (!$this->_exists)
+            return false;
+
+        $this->fireModelEvent(new \Strux\Component\Model\Events\Deleting($this));
 
         $sql = "DELETE FROM `{$this->getTable()}` WHERE `{$this->getPrimaryKey()}` = ?";
         $stmt = $this->_execute($sql, [$this->{$this->getPrimaryKey()}]);
 
         if ($stmt->rowCount() > 0) {
             $this->_exists = false;
+            $this->fireModelEvent(new \Strux\Component\Model\Events\Deleted($this));
             return true;
         }
         return false;
@@ -332,7 +365,8 @@ abstract class Model
     {
         $instance = static::query();
         $ids = is_array($ids) ? $ids : [$ids];
-        if (empty($ids)) return 0;
+        if (empty($ids))
+            return 0;
 
         $placeholders = implode(', ', array_fill(0, count($ids), '?'));
         $sql = "DELETE FROM `{$instance->getTable()}` WHERE `{$instance->getPrimaryKey()}` IN ($placeholders)";
@@ -414,7 +448,7 @@ abstract class Model
         $properties = (new ReflectionClass($this))->getProperties();
         $propertiesToSerialize = [];
         foreach ($properties as $property) {
-            if ($property->getName() !== 'db') {
+            if ($property->getName() !== 'db' && !$property->isStatic()) {
                 $propertiesToSerialize[] = $property->getName();
             }
         }
