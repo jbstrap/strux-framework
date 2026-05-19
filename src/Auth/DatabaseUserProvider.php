@@ -6,7 +6,7 @@ namespace Strux\Auth;
 
 use RuntimeException;
 use Strux\Component\Config\Config;
-use Strux\Component\Model\Model;
+use Strux\Component\ORM\Model;
 
 class DatabaseUserProvider implements UserProviderInterface
 {

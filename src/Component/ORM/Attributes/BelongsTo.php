@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Strux\Component\Model\Attributes;
+namespace Strux\Component\ORM\Attributes;
 
 use Attribute;
 use Strux\Component\Database\Types\KeyAction;

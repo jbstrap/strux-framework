@@ -23,7 +23,7 @@ Strux strictly adheres to **PSR-1, PSR-2, PSR-3, PSR-4, and PSR-7** standards fo
 * [Database & ORM](#database--orm)
 * [Migrations](#migrations)
 * [Query Builder](#query-builder)
-* [Model Relationships](#model-relationships)
+* [ORM Relationships](#model-relationships)
 * [Event Dispatcher](#event-dispatcher)
 * [Queue System](#queue-system)
 * [Security](#security)
@@ -217,11 +217,11 @@ return $this->view('auth/login', ['error' => 'Invalid credentials']);
 
 Strux includes an **Active Record ORM** using PHP Attributes.
 
-### Model Definition
+### ORM Definition
 
 ```php
 #[Table('users')]
-class User extends Model
+class User extends ORM
 {
     #[Id]
     #[Column('id')]
@@ -266,7 +266,7 @@ $users = User::query()
 
 ---
 
-## 🔗 Model Relationships
+## 🔗 ORM Relationships
 
 Supported relationships:
 

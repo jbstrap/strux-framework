@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Strux\Component\Model\Relations;
+namespace Strux\Component\ORM\Relations;
 
 use InvalidArgumentException;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\NotFoundExceptionInterface;
 use Strux\Component\Exceptions\Container\ContainerException;
-use Strux\Component\Model\Model;
+use Strux\Component\ORM\Model;
 use Strux\Support\Collection;
 use Strux\Support\ContainerBridge;
 
@@ -100,7 +100,7 @@ class BelongsToMany extends Relation
             $placeholders[] = '?';
         }
 
-        $sql = "INSERT INTO {$this->pivotTable} (" . implode(', ', $columns) . ") 
+        $sql = "INSERT INTO {$this->pivotTable} (" . implode(', ', $columns) . ")
                 VALUES (" . implode(', ', $placeholders) . ")";
 
         $stmt = $db->prepare($sql);

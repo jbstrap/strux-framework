@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Strux\Component\Model\Behavior;
+namespace Strux\Component\ORM\Behavior;
 
 use Closure;
 use RuntimeException;
 use Strux\Component\Database\Expression;
 use Strux\Component\Database\Paginator;
 use Strux\Component\Exceptions\DatabaseException;
-use Strux\Component\Model\Model;
+use Strux\Component\ORM\Model;
 use Strux\Support\Bridge\Request;
 use Strux\Support\Collection;
 

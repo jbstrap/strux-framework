@@ -1,9 +1,9 @@
 <?php
 
-namespace Strux\Component\Model\Relations;
+namespace Strux\Component\ORM\Relations;
 
 use InvalidArgumentException;
-use Strux\Component\Model\Model;
+use Strux\Component\ORM\Model;
 use Strux\Support\Collection;
 
 class HasOne extends Relation

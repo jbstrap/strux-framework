@@ -132,14 +132,14 @@ use Strux\Component\Database\Attributes\Table;
 use Strux\Component\Database\Attributes\Column;
 use Strux\Component\Database\Attributes\Id;
 use Strux\Component\Database\Types\Field;
-use Strux\Component\Model\Model;
+use Strux\Component\ORM\Model;
 
 #[Table('{$tableName}')]
 class {$className} extends Model
 {
     #[Id, Column]
     public ?int \$id = null;
-    
+
     #[Column(type: Field::string, length: 150)]
     public string \$name;
 }
@@ -328,11 +328,11 @@ class {$className} implements MiddlewareInterface
     public function process(ServerRequestInterface \$request, RequestHandlerInterface \$handler): ResponseInterface
     {
         // Logic before request
-        
+
         \$response = \$handler->handle(\$request);
-        
+
         // Logic after response
-        
+
         return \$response;
     }
 }
@@ -375,7 +375,7 @@ class {$className} extends ServiceRegistry
         // Register services here
         // \$this->container->singleton(SomeInterface::class, SomeImplementation::class);
     }
-    
+
     public function init(\$app): void {}
 }
 PHP;
@@ -435,8 +435,8 @@ use Strux\Component\Database\Attributes\Id;
 use Strux\Component\Database\Attributes\Table;
 use Strux\Component\Database\Attributes\Unique;
 use Strux\Component\Database\Types\Field;
-use Strux\Component\Model\Attributes\BelongsToMany;
-use Strux\Component\Model\Model;
+use Strux\Component\ORM\Attributes\BelongsToMany;
+use Strux\Component\ORM\Model;
 use Strux\Support\Collection;
 
 #[Table('users')]
@@ -476,9 +476,9 @@ class User extends Model
         \$roles = is_array(\$roles) ? \$roles : [\$roles];
         // Ensure roles are loaded
         if (!isset(\$this->roles)) {
-            \$this->roles = \$this->roles()->get(); 
+            \$this->roles = \$this->roles()->get();
         }
-        
+
         foreach (\$this->roles as \$role) {
             if (in_array(\$role->slug, \$roles) || in_array(\$role->name, \$roles)) {
                 return true;
@@ -515,8 +515,8 @@ use Strux\Component\Database\Attributes\Column;
 use Strux\Component\Database\Attributes\Id;
 use Strux\Component\Database\Attributes\Table;
 use Strux\Component\Database\Attributes\Unique;
-use Strux\Component\Model\Attributes\BelongsToMany;
-use Strux\Component\Model\Model;
+use Strux\Component\ORM\Attributes\BelongsToMany;
+use Strux\Component\ORM\Model;
 use Strux\Support\Collection;
 
 #[Table('roles')]
@@ -557,8 +557,8 @@ use Strux\Component\Database\Attributes\Column;
 use Strux\Component\Database\Attributes\Id;
 use Strux\Component\Database\Attributes\Table;
 use Strux\Component\Database\Attributes\Unique;
-use Strux\Component\Model\Attributes\BelongsToMany;
-use Strux\Component\Model\Model;
+use Strux\Component\ORM\Attributes\BelongsToMany;
+use Strux\Component\ORM\Model;
 use Strux\Support\Collection;
 
 #[Table('permissions')]

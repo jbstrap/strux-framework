@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Strux\Component\Model\Relations;
+namespace Strux\Component\ORM\Relations;
 
-use Strux\Component\Model\Model;
+use Strux\Component\ORM\Model;
 use Strux\Support\Collection;
 
 abstract class Relation

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Strux\Component\Model\Behavior;
+namespace Strux\Component\ORM\Behavior;
 
-use Strux\Component\Model\Model;
+use Strux\Component\ORM\Model;
 
 trait HasSoftDeletes
 {
@@ -24,15 +24,15 @@ trait HasSoftDeletes
      */
     public function delete(): bool
     {
-        $this->fireModelEvent(new \Strux\Component\Model\Events\Deleting($this));
+        $this->fireModelEvent(new \Strux\Component\ORM\Events\Deleting($this));
 
         $column = $this->getSoftDeleteColumn();
         $this->{$column} = date('Y-m-d H:i:s');
-        
+
         $result = $this->save();
 
         if ($result) {
-            $this->fireModelEvent(new \Strux\Component\Model\Events\Deleted($this));
+            $this->fireModelEvent(new \Strux\Component\ORM\Events\Deleted($this));
         }
 
         return $result;
@@ -43,15 +43,15 @@ trait HasSoftDeletes
      */
     public function restore(): bool
     {
-        $this->fireModelEvent(new \Strux\Component\Model\Events\Restoring($this));
+        $this->fireModelEvent(new \Strux\Component\ORM\Events\Restoring($this));
 
         $column = $this->getSoftDeleteColumn();
         $this->{$column} = null;
-        
+
         $result = $this->save();
 
         if ($result) {
-            $this->fireModelEvent(new \Strux\Component\Model\Events\Restored($this));
+            $this->fireModelEvent(new \Strux\Component\ORM\Events\Restored($this));
         }
 
         return $result;

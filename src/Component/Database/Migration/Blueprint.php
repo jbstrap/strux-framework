@@ -11,8 +11,8 @@ use Strux\Component\Database\Attributes\Id;
 use Strux\Component\Database\Attributes\Table;
 use Strux\Component\Database\Attributes\Unique;
 use Strux\Component\Database\Types\Field;
-use Strux\Component\Model\Attributes\BelongsTo;
-use Strux\Component\Model\Attributes\BelongsToMany;
+use Strux\Component\ORM\Attributes\BelongsTo;
+use Strux\Component\ORM\Attributes\BelongsToMany;
 use Strux\Support\Helpers\Utils;
 
 class Blueprint
@@ -436,8 +436,8 @@ class Blueprint
     private static function getTableConstraints(PDO $db, string $table): array
     {
         try {
-            $sql = "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE 
-                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '$table' 
+            $sql = "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '$table'
                     AND REFERENCED_TABLE_NAME IS NOT NULL";
             $stmt = $db->query($sql);
             return $stmt->fetchAll(PDO::FETCH_COLUMN);

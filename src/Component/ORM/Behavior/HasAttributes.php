@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Strux\Component\Model\Behavior;
+namespace Strux\Component\ORM\Behavior;
 
 use DateTime;
 use Exception;
@@ -15,8 +15,8 @@ use ReflectionProperty;
 use RuntimeException;
 use Strux\Component\Database\Attributes\Column;
 use Strux\Component\Database\Attributes\SoftDelete;
-use Strux\Component\Model\Attributes\Hidden;
-use Strux\Component\Model\Attributes\RelationAttribute;
+use Strux\Component\ORM\Attributes\Hidden;
+use Strux\Component\ORM\Attributes\RelationAttribute;
 
 trait HasAttributes
 {

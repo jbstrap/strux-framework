@@ -9,7 +9,7 @@ use ReflectionClass;
 use ReflectionNamedType;
 use ReflectionProperty;
 use Strux\Component\Config\DirectoryInterface;
-use Strux\Component\Model\Attributes\RelationAttribute;
+use Strux\Component\ORM\Attributes\RelationAttribute;
 use Strux\Support\ContainerBridge;
 
 trait FormCommands

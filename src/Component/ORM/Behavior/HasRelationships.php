@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Strux\Component\Model\Behavior;
+namespace Strux\Component\ORM\Behavior;
 
 use ReflectionAttribute;
 use ReflectionClass;
@@ -10,17 +10,17 @@ use ReflectionException;
 use ReflectionProperty;
 use RuntimeException;
 use Strux\Component\Database\Attributes\Table;
-use Strux\Component\Model\Attributes\BelongsTo as BelongsToAttr;
-use Strux\Component\Model\Attributes\BelongsToMany as BelongsToManyAttr;
-use Strux\Component\Model\Attributes\HasMany as HasManyAttr;
-use Strux\Component\Model\Attributes\HasOne as HasOneAttr;
-use Strux\Component\Model\Attributes\RelationAttribute;
-use Strux\Component\Model\Model;
-use Strux\Component\Model\Relations\BelongsTo;
-use Strux\Component\Model\Relations\BelongsToMany;
-use Strux\Component\Model\Relations\HasMany;
-use Strux\Component\Model\Relations\HasOne;
-use Strux\Component\Model\Relations\Relation;
+use Strux\Component\ORM\Attributes\BelongsTo as BelongsToAttr;
+use Strux\Component\ORM\Attributes\BelongsToMany as BelongsToManyAttr;
+use Strux\Component\ORM\Attributes\HasMany as HasManyAttr;
+use Strux\Component\ORM\Attributes\HasOne as HasOneAttr;
+use Strux\Component\ORM\Attributes\RelationAttribute;
+use Strux\Component\ORM\Model;
+use Strux\Component\ORM\Relations\BelongsTo;
+use Strux\Component\ORM\Relations\BelongsToMany;
+use Strux\Component\ORM\Relations\HasMany;
+use Strux\Component\ORM\Relations\HasOne;
+use Strux\Component\ORM\Relations\Relation;
 use Strux\Support\Collection;
 use Strux\Support\Helpers\Utils;
 

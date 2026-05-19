@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Strux\Component\Model;
+namespace Strux\Component\ORM;
 
 use Closure;
 use DateTime;
@@ -16,12 +16,12 @@ use RuntimeException;
 use Strux\Component\Database\Attributes\Id;
 use Strux\Component\Database\Attributes\Table;
 use Strux\Component\Exceptions\DatabaseException;
-use Strux\Component\Model\Attributes\RelationAttribute;
-use Strux\Component\Model\Behavior\HasAttributes;
-use Strux\Component\Model\Behavior\HasEvents;
-use Strux\Component\Model\Behavior\HasQueryBuilder;
-use Strux\Component\Model\Behavior\HasRelationships;
-use Strux\Component\Model\Behavior\HasTimestamps;
+use Strux\Component\ORM\Attributes\RelationAttribute;
+use Strux\Component\ORM\Behavior\HasAttributes;
+use Strux\Component\ORM\Behavior\HasEvents;
+use Strux\Component\ORM\Behavior\HasQueryBuilder;
+use Strux\Component\ORM\Behavior\HasRelationships;
+use Strux\Component\ORM\Behavior\HasTimestamps;
 use Strux\Support\ContainerBridge;
 use Throwable;
 
@@ -127,7 +127,7 @@ abstract class Model
         $instance->_original = $data;
         $instance->_isQueryBuilderInstance = false;
 
-        $instance->fireModelEvent(new \Strux\Component\Model\Events\Retrieved($instance));
+        $instance->fireModelEvent(new \Strux\Component\ORM\Events\Retrieved($instance));
 
         return $instance;
     }
@@ -229,7 +229,11 @@ abstract class Model
         if ($this->_isQueryBuilderInstance)
             throw new RuntimeException("Cannot call save() on query builder.");
 
-        $this->fireModelEvent(new \Strux\Component\Model\Events\Saving($this));
+        if (!$this->validate()) {
+            return false;
+        }
+
+        $this->fireModelEvent(new \Strux\Component\ORM\Events\Saving($this));
 
         $attributes = $this->_getPublicPropertiesForDb();
         $this->handleTimestamps($attributes);
@@ -242,7 +246,7 @@ abstract class Model
 
         if ($success) {
             $this->_original = $this->_getPublicPropertiesForDb();
-            $this->fireModelEvent(new \Strux\Component\Model\Events\Saved($this));
+            $this->fireModelEvent(new \Strux\Component\ORM\Events\Saved($this));
         }
         return $success;
     }
@@ -274,7 +278,7 @@ abstract class Model
         if (empty($dirty))
             return true;
 
-        $this->fireModelEvent(new \Strux\Component\Model\Events\Updating($this));
+        $this->fireModelEvent(new \Strux\Component\ORM\Events\Updating($this));
 
         $pkValue = $this->{$this->getPrimaryKey()} ?? null;
         if ($pkValue === null)
@@ -289,7 +293,7 @@ abstract class Model
         $success = $stmt->rowCount() >= 0;
 
         if ($success) {
-            $this->fireModelEvent(new \Strux\Component\Model\Events\Updated($this));
+            $this->fireModelEvent(new \Strux\Component\ORM\Events\Updated($this));
         }
 
         return $success;
@@ -319,7 +323,7 @@ abstract class Model
         if (empty($attributesToSave))
             return false;
 
-        $this->fireModelEvent(new \Strux\Component\Model\Events\Creating($this));
+        $this->fireModelEvent(new \Strux\Component\ORM\Events\Creating($this));
 
         $columns = array_keys($attributesToSave);
         $placeholders = implode(', ', array_fill(0, count($columns), '?'));
@@ -336,7 +340,7 @@ abstract class Model
         }
         $this->_exists = true;
 
-        $this->fireModelEvent(new \Strux\Component\Model\Events\Created($this));
+        $this->fireModelEvent(new \Strux\Component\ORM\Events\Created($this));
 
         return true;
     }
@@ -348,14 +352,14 @@ abstract class Model
         if (!$this->_exists)
             return false;
 
-        $this->fireModelEvent(new \Strux\Component\Model\Events\Deleting($this));
+        $this->fireModelEvent(new \Strux\Component\ORM\Events\Deleting($this));
 
         $sql = "DELETE FROM `{$this->getTable()}` WHERE `{$this->getPrimaryKey()}` = ?";
         $stmt = $this->_execute($sql, [$this->{$this->getPrimaryKey()}]);
 
         if ($stmt->rowCount() > 0) {
             $this->_exists = false;
-            $this->fireModelEvent(new \Strux\Component\Model\Events\Deleted($this));
+            $this->fireModelEvent(new \Strux\Component\ORM\Events\Deleted($this));
             return true;
         }
         return false;

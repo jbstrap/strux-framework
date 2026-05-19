@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Strux\Component\Model\Behavior;
+namespace Strux\Component\ORM\Behavior;
 
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Strux\Support\ContainerBridge;

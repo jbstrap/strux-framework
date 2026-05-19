@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Strux\Component\Model\Relations;
+namespace Strux\Component\ORM\Relations;
 
 use InvalidArgumentException;
-use Strux\Component\Model\Model;
+use Strux\Component\ORM\Model;
 use Strux\Support\Collection;
 
 class BelongsTo extends Relation

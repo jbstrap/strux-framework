@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Strux\Component\Model\Events;
+namespace Strux\Component\ORM\Events;
 
-use Strux\Component\Model\Model;
+use Strux\Component\ORM\Model;
 
 class Retrieved
 {
