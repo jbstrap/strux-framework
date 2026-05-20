@@ -292,6 +292,19 @@ abstract class Form implements FormInterface
         return $this->validator->getErrors();
     }
 
+    /**
+     * Inject external errors (like ORM validation errors) into the form fields.
+     */
+    public function addErrors(array $errors): self
+    {
+        foreach ($errors as $field => $messages) {
+            if (isset($this->fields[$field])) {
+                $this->fields[$field]->setErrors((array) $messages);
+            }
+        }
+        return $this;
+    }
+
     public function setAction(string $action): self
     {
         $this->action = $action;

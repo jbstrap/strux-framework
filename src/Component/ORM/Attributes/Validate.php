@@ -7,12 +7,12 @@ namespace Strux\Component\ORM\Attributes;
 use Attribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY | Attribute::IS_REPEATABLE)]
-class Rule
+class Validate
 {
-    /** @var string[] */
+    /** @var array<int, mixed> */
     public array $rules;
 
-    public function __construct(string ...$rules)
+    public function __construct(array $rules)
     {
         $this->rules = $rules;
     }

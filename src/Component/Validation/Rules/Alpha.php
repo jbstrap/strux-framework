@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Strux\Component\Validation\Rules;
 
+use function ctype_alpha;
+use function is_string;
+
 class Alpha implements RulesInterface
 {
     private ?string $message;

@@ -22,12 +22,13 @@ use Strux\Component\ORM\Behavior\HasEvents;
 use Strux\Component\ORM\Behavior\HasQueryBuilder;
 use Strux\Component\ORM\Behavior\HasRelationships;
 use Strux\Component\ORM\Behavior\HasTimestamps;
+use Strux\Component\ORM\Behavior\HasValidation;
 use Strux\Support\ContainerBridge;
 use Throwable;
 
 abstract class Model
 {
-    use HasAttributes, HasEvents, HasQueryBuilder, HasRelationships, HasTimestamps;
+    use HasAttributes, HasEvents, HasQueryBuilder, HasRelationships, HasTimestamps, HasValidation;
 
     protected ?PDO $db = null;
     private ?string $_tableName = null;

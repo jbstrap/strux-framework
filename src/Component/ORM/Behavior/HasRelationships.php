@@ -24,6 +24,8 @@ use Strux\Component\ORM\Relations\Relation;
 use Strux\Support\Collection;
 use Strux\Support\Helpers\Utils;
 
+use function array_merge;
+
 trait HasRelationships
 {
     private array $_relations = [];
@@ -105,7 +107,8 @@ trait HasRelationships
             $keys = explode('.', $name);
             $temp = &$parsed;
             foreach ($keys as $key) {
-                if (!isset($temp[$key])) $temp[$key] = [];
+                if (!isset($temp[$key]))
+                    $temp[$key] = [];
                 $temp = &$temp[$key];
             }
         }
@@ -118,8 +121,10 @@ trait HasRelationships
         $buildPath = function (array $tree, string $prefix = '') use (&$buildPath, &$relations) {
             foreach ($tree as $name => $nested) {
                 $currentPath = $prefix ? "{$prefix}.{$name}" : $name;
-                if (empty($nested)) $relations[] = $currentPath;
-                else $buildPath($nested, $currentPath);
+                if (empty($nested))
+                    $relations[] = $currentPath;
+                else
+                    $buildPath($nested, $currentPath);
             }
         };
         $buildPath($nestedTree);
@@ -181,7 +186,6 @@ trait HasRelationships
         /** @var Model $relatedInstance */
         $relatedInstance = new $relatedModel();
 
-        // 1. Resolve Pivot Table Name if it's a Class
         if ($pivotTable && class_exists($pivotTable)) {
             $pivotReflection = new ReflectionClass($pivotTable);
             $tableAttr = $pivotReflection->getAttributes(Table::class)[0] ?? null;
@@ -190,7 +194,6 @@ trait HasRelationships
             }
         }
 
-        // 2. Default Pivot Table Logic
         if ($pivotTable === null) {
             $models = [
                 $this->getTable() ?? Utils::getPluralName($this->reflection()->getShortName()),

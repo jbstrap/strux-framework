@@ -27,7 +27,7 @@ trait HasValidation
 
         $reflection = new \ReflectionClass($this);
         foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC | \ReflectionProperty::IS_PROTECTED) as $property) {
-            $attributes = $property->getAttributes(\Strux\Component\ORM\Attributes\Rule::class);
+            $attributes = $property->getAttributes(\Strux\Component\ORM\Attributes\Validate::class);
             foreach ($attributes as $attribute) {
                 $instance = $attribute->newInstance();
                 $name = $property->getName();

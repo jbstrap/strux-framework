@@ -63,7 +63,13 @@ class Validator implements ValidatorInterface
 
         $isValid = true;
 
-        foreach ($validators as $rule) {
+        foreach ($validators as $key => $rule) {
+            $customMessage = null;
+            if (is_string($key)) {
+                $customMessage = $rule;
+                $rule = $key;
+            }
+
             if (is_string($rule)) {
                 $rule = $this->resolveRule($rule);
             }
@@ -75,7 +81,7 @@ class Validator implements ValidatorInterface
             if ($rule instanceof RulesInterface) {
                 $errorMessage = $rule->validate($value, $this->postData);
                 if ($errorMessage) {
-                    $this->errors[$field] = $errorMessage;
+                    $this->errors[$field] = $customMessage ?? $errorMessage;
                     $isValid = false;
                     break;
                 }
@@ -94,13 +100,19 @@ class Validator implements ValidatorInterface
             $ruleName = $ruleString;
         }
 
-        $className = 'Strux\\Component\\Validation\\Rules\\' . ucfirst(strtolower($ruleName));
+        $ruleClassPart = ucfirst(strtolower($ruleName));
+        $frameworkClass = 'Strux\\Component\\Validation\\Rules\\' . $ruleClassPart;
+        $appClass = 'App\\Validation\\Rules\\' . $ruleClassPart;
 
-        if (class_exists($className)) {
-            return new $className(...$params);
+        if (class_exists($appClass)) {
+            return new $appClass(...$params);
         }
 
-        throw new \RuntimeException("Validation rule class '{$className}' not found for rule '{$ruleString}'.");
+        if (class_exists($frameworkClass)) {
+            return new $frameworkClass(...$params);
+        }
+
+        throw new \RuntimeException("Validation rule class not found for rule '{$ruleString}'.");
     }
 
     public function getData(bool $sanitized = false): array
