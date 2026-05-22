@@ -142,7 +142,7 @@ trait HasQueryBuilder
             return $builder->whereSub($column, $operator, $value, $boolean);
         }
 
-        $operator = strtoupper((string)$operator);
+        $operator = strtoupper((string) $operator);
         $needsBinding = !in_array($operator, ['IS NULL', 'IS NOT NULL']);
 
         $builder->_wheres[] = [
@@ -367,7 +367,7 @@ trait HasQueryBuilder
             return false;
         }
 
-        return (bool)$stmt->fetchColumn();
+        return (bool) $stmt->fetchColumn();
     }
 
     public function get(): Collection
@@ -403,11 +403,18 @@ trait HasQueryBuilder
         return $collection->first();
     }
 
+    public function last(): ?static
+    {
+        $this->orderBy($this->getPrimaryKey(), 'desc')->limit(1);
+        return $this->get()->first();
+    }
+
     public static function find(mixed $id, array $with = []): ?static
     {
         $instance = new static();
         $query = static::query()->where($instance->getPrimaryKey(), $id);
-        if ($with) $query->with(...$with);
+        if ($with)
+            $query->with(...$with);
         return $query->first();
     }
 
@@ -423,15 +430,112 @@ trait HasQueryBuilder
     public function latest(?string $column = null): static
     {
         $column = $column ?? $this->getCreatedAtColumn();
-        if (!$column) throw new RuntimeException("Cannot use latest() on a model without timestamps enabled.");
+        if (!$column)
+            throw new RuntimeException("Cannot use latest() on a model without timestamps enabled.");
         return $this->orderBy($column, 'DESC');
     }
 
     public function oldest(?string $column = null): static
     {
         $column = $column ?? $this->getCreatedAtColumn();
-        if (!$column) throw new RuntimeException("Cannot use oldest() on a model without timestamps enabled.");
+        if (!$column)
+            throw new RuntimeException("Cannot use oldest() on a model without timestamps enabled.");
         return $this->orderBy($column, 'ASC');
+    }
+
+    // --- Bulk Operations ---
+
+    public function insert(array $values): bool
+    {
+        if (empty($values))
+            return true;
+
+        if (!is_array(reset($values))) {
+            $values = [$values];
+        }
+
+        $builder = $this->_getQueryBuilderInstance();
+        $table = $builder->_from ?? $builder->getTable();
+
+        $columns = array_keys(reset($values));
+        $bindings = [];
+        $placeholders = [];
+
+        foreach ($values as $row) {
+            $rowPlaceholders = [];
+            foreach ($columns as $column) {
+                $rowPlaceholders[] = '?';
+                $bindings[] = $row[$column] ?? null;
+            }
+            $placeholders[] = '(' . implode(', ', $rowPlaceholders) . ')';
+        }
+
+        $columnsStr = '`' . implode('`, `', $columns) . '`';
+        $placeholdersStr = implode(', ', $placeholders);
+
+        $sql = "INSERT INTO `{$table}` ({$columnsStr}) VALUES {$placeholdersStr}";
+
+        try {
+            $builder->_execute($sql, $bindings);
+            return true;
+        } catch (DatabaseException $e) {
+            return false;
+        }
+    }
+
+    public function upsert(array $values, array|string $uniqueBy, ?array $update = null): int
+    {
+        if (empty($values))
+            return 0;
+
+        if (!is_array(reset($values))) {
+            $values = [$values];
+        }
+
+        $builder = $this->_getQueryBuilderInstance();
+        $table = $builder->_from ?? $builder->getTable();
+
+        $columns = array_keys(reset($values));
+        $bindings = [];
+        $placeholders = [];
+
+        foreach ($values as $row) {
+            $rowPlaceholders = [];
+            foreach ($columns as $column) {
+                $rowPlaceholders[] = '?';
+                $bindings[] = $row[$column] ?? null;
+            }
+            $placeholders[] = '(' . implode(', ', $rowPlaceholders) . ')';
+        }
+
+        $columnsStr = '`' . implode('`, `', $columns) . '`';
+        $placeholdersStr = implode(', ', $placeholders);
+
+        $sql = "INSERT INTO `{$table}` ({$columnsStr}) VALUES {$placeholdersStr}";
+
+        if (empty($update)) {
+            $update = array_filter($columns, fn($col) => !in_array($col, (array) $uniqueBy));
+        }
+
+        if (!empty($update)) {
+            $updateClauses = [];
+            foreach ($update as $key => $value) {
+                if (is_int($key)) {
+                    $updateClauses[] = "`{$value}` = VALUES(`{$value}`)";
+                } else {
+                    $updateClauses[] = "`{$key}` = ?";
+                    throw new RuntimeException("Custom upsert binding values not currently supported. Pass column names as values.");
+                }
+            }
+            $sql .= " ON DUPLICATE KEY UPDATE " . implode(', ', $updateClauses);
+        }
+
+        try {
+            $stmt = $builder->_execute($sql, $bindings);
+            return $stmt->rowCount();
+        } catch (DatabaseException $e) {
+            return 0;
+        }
     }
 
     // --- Aggregates ---
@@ -457,7 +561,7 @@ trait HasQueryBuilder
 
     public function count(string $column = '*'): int
     {
-        return (int)$this->_aggregate('COUNT', $column);
+        return (int) $this->_aggregate('COUNT', $column);
     }
 
     public function max(string $column): mixed
@@ -497,7 +601,7 @@ trait HasQueryBuilder
         } else {
             $selectParts = [];
             foreach ($this->_selects as $select) {
-                $selectParts[] = (string)$select['sql'];
+                $selectParts[] = (string) $select['sql'];
                 if (!empty($select['bindings'])) {
                     $this->_compiledBindings = array_merge($this->_compiledBindings, $select['bindings']);
                 }
@@ -523,7 +627,8 @@ trait HasQueryBuilder
         if (!empty($this->_havings)) {
             $sql .= " HAVING ";
             foreach ($this->_havings as $i => $having) {
-                if ($i > 0) $sql .= " {$having['boolean']} ";
+                if ($i > 0)
+                    $sql .= " {$having['boolean']} ";
                 $sql .= "{$having['column']} {$having['operator']} ?";
                 $this->_compiledBindings = array_merge($this->_compiledBindings, $having['bindings']);
             }
@@ -533,8 +638,10 @@ trait HasQueryBuilder
             $sql .= " ORDER BY " . implode(', ', array_map(fn($o) => "{$o['column']} {$o['direction']}", $this->_orders));
         }
 
-        if ($this->_limit !== null) $sql .= " LIMIT $this->_limit";
-        if ($this->_offset !== null) $sql .= " OFFSET $this->_offset";
+        if ($this->_limit !== null)
+            $sql .= " LIMIT $this->_limit";
+        if ($this->_offset !== null)
+            $sql .= " OFFSET $this->_offset";
 
         return $sql;
     }
@@ -577,16 +684,17 @@ trait HasQueryBuilder
     // --- Pagination ---
 
     public function paginate(
-        int     $perPage = 15,
-        array   $columns = ['*'],
-        string  $pageName = 'page',
-        ?int    $page = null,
+        int $perPage = 15,
+        array $columns = ['*'],
+        string $pageName = 'page',
+        ?int $page = null,
         ?string $path = '',
-        array   $query = []): Paginator
-    {
+        array $query = []
+    ): Paginator {
         $page = $page ?: Request::query($pageName, 1, type: 'int');
         $query = $query ?: Request::allQuery();
-        if ($page < 1) $page = 1;
+        if ($page < 1)
+            $page = 1;
 
         $countBuilder = static::query();
         $this->_copyQueryState($this, $countBuilder);
@@ -597,11 +705,12 @@ trait HasQueryBuilder
 
         $itemBuilder->limit($perPage);
         $itemBuilder->offset(($page - 1) * $perPage);
-        if ($columns !== ['*']) $itemBuilder->select($columns);
+        if ($columns !== ['*'])
+            $itemBuilder->select($columns);
 
         $results = $itemBuilder->get();
 
-        return new Paginator($results, $total, $perPage, $page, $path, (array)$query);
+        return new Paginator($results, $total, $perPage, $page, $path, (array) $query);
     }
 
     private function _copyQueryState($from, $to): void
@@ -630,14 +739,18 @@ trait HasQueryBuilder
         $bindings = $this->_compiledBindings;
 
         foreach ($bindings as $bind) {
-            if (is_string($bind)) $bind = "'" . addslashes($bind) . "'";
-            elseif (is_null($bind)) $bind = 'NULL';
-            elseif (is_bool($bind)) $bind = $bind ? '1' : '0';
-            elseif ($bind instanceof \DateTimeInterface) $bind = "'" . $bind->format('Y-m-d H:i:s') . "'";
+            if (is_string($bind))
+                $bind = "'" . addslashes($bind) . "'";
+            elseif (is_null($bind))
+                $bind = 'NULL';
+            elseif (is_bool($bind))
+                $bind = $bind ? '1' : '0';
+            elseif ($bind instanceof \DateTimeInterface)
+                $bind = "'" . $bind->format('Y-m-d H:i:s') . "'";
 
             $pos = strpos($sql, '?');
             if ($pos !== false) {
-                $sql = substr_replace($sql, (string)$bind, $pos, 1);
+                $sql = substr_replace($sql, (string) $bind, $pos, 1);
             }
         }
         return $sql;

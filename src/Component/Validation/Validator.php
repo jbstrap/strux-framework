@@ -93,14 +93,19 @@ class Validator implements ValidatorInterface
     private function resolveRule(string $ruleString): RulesInterface
     {
         $params = [];
-        if (str_contains($ruleString, ':')) {
-            [$ruleName, $paramStr] = explode(':', $ruleString, 2);
-            $params = explode(',', $paramStr);
+        
+        // Parse the new bracket syntax: rule[param1,param2]
+        if (preg_match('/^([^\[]+)(?:\[(.*)\])?$/', $ruleString, $matches)) {
+            $ruleName = $matches[1];
+            if (isset($matches[2]) && $matches[2] !== '') {
+                // Split by comma, and optional trim whitespace
+                $params = array_map('trim', explode(',', $matches[2]));
+            }
         } else {
             $ruleName = $ruleString;
         }
 
-        $ruleClassPart = ucfirst(strtolower($ruleName));
+        $ruleClassPart = ucfirst(strtolower(trim($ruleName)));
         $frameworkClass = 'Strux\\Component\\Validation\\Rules\\' . $ruleClassPart;
         $appClass = 'App\\Validation\\Rules\\' . $ruleClassPart;
 

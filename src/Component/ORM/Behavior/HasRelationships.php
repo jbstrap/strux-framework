@@ -49,19 +49,48 @@ trait HasRelationships
             }
         }
 
-        throw new RuntimeException("Relation method '$method' does not exist on " . static::class);
+        $scopeMethod = 'scope' . ucfirst($method);
+        if (method_exists($this, $scopeMethod)) {
+            $builder = $this->_getQueryBuilderInstance();
+            $result = $this->{$scopeMethod}($builder, ...$arguments);
+            return $result ?? $builder;
+        }
+
+        throw new RuntimeException("Method '$method' does not exist on " . static::class);
     }
 
-    public function with(string ...$relations): static
+    public function with(mixed ...$relations): static
     {
         $builder = $this->_getQueryBuilderInstance();
-        $builder->_with = array_merge($builder->_with, $relations);
+        foreach ($relations as $relation) {
+            if (is_string($relation)) {
+                $builder->_with[$relation] = null;
+            } elseif (is_array($relation)) {
+                foreach ($relation as $key => $value) {
+                    if (is_int($key)) {
+                        $builder->_with[$value] = null;
+                    } else {
+                        $builder->_with[$key] = $value;
+                    }
+                }
+            }
+        }
         return $builder;
     }
 
     protected function eagerLoadRelations(array $models, array $relations): void
     {
-        $nestedRelations = $this->parseNestedRelations($relations);
+        // Handle case where relations array is list of strings vs assoc array
+        $normalizedRelations = [];
+        foreach ($relations as $key => $value) {
+            if (is_int($key)) {
+                $normalizedRelations[$value] = null;
+            } else {
+                $normalizedRelations[$key] = $value;
+            }
+        }
+
+        $nestedRelations = $this->parseNestedRelations(array_keys($normalizedRelations));
 
         foreach ($nestedRelations as $relationName => $nestedChildren) {
             if (!property_exists($models[0], $relationName)) {
@@ -77,6 +106,11 @@ trait HasRelationships
 
             $relationInstance = $this->initializeRelationFromAttribute($attributes[0]);
             $relationInstance->addEagerConstraints($models);
+
+            if (isset($normalizedRelations[$relationName]) && is_callable($normalizedRelations[$relationName])) {
+                $normalizedRelations[$relationName]($relationInstance->getQuery());
+            }
+
             $relatedModels = $relationInstance->getQuery()->get();
 
             if (!empty($nestedChildren) && !$relatedModels->isEmpty()) {
@@ -104,7 +138,7 @@ trait HasRelationships
     {
         $parsed = [];
         foreach ($relations as $name) {
-            $keys = explode('.', $name);
+            $keys = explode('.', (string)$name);
             $temp = &$parsed;
             foreach ($keys as $key) {
                 if (!isset($temp[$key]))

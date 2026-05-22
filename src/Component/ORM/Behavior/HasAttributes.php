@@ -74,7 +74,12 @@ trait HasAttributes
 
                 try {
                     $castedValue = $this->castAttribute($value, $propertyType);
-                    $this->{$casedPropertyName} = $castedValue;
+                    $mutator = 'set' . ucfirst($casedPropertyName) . 'Attribute';
+                    if (method_exists($this, $mutator)) {
+                        $this->{$mutator}($castedValue);
+                    } else {
+                        $this->{$casedPropertyName} = $castedValue;
+                    }
                 } catch (Exception $e) {
                     throw new RuntimeException("Failed to cast attribute '$key'.", 0, $e);
                 }

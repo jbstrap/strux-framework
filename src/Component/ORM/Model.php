@@ -77,6 +77,16 @@ abstract class Model
         }
     }
 
+    // --- Lifecycle Hooks ---
+    protected function beforeSave(): void {}
+    protected function afterSave(): void {}
+    protected function beforeCreate(): void {}
+    protected function afterCreate(): void {}
+    protected function beforeUpdate(): void {}
+    protected function afterUpdate(): void {}
+    protected function beforeDelete(): void {}
+    protected function afterDelete(): void {}
+
     /**
      * Create a new record and save it to the database.
      */
@@ -230,6 +240,8 @@ abstract class Model
         if ($this->_isQueryBuilderInstance)
             throw new RuntimeException("Cannot call save() on query builder.");
 
+        $this->beforeSave();
+
         if (!$this->validate()) {
             return false;
         }
@@ -248,6 +260,7 @@ abstract class Model
         if ($success) {
             $this->_original = $this->_getPublicPropertiesForDb();
             $this->fireModelEvent(new \Strux\Component\ORM\Events\Saved($this));
+            $this->afterSave();
         }
         return $success;
     }
@@ -295,6 +308,7 @@ abstract class Model
 
         if ($success) {
             $this->fireModelEvent(new \Strux\Component\ORM\Events\Updated($this));
+            $this->afterUpdate();
         }
 
         return $success;

@@ -10,6 +10,17 @@ use IteratorAggregate;
 use JsonSerializable;
 use Traversable;
 
+use function array_search;
+use function array_values;
+use function array_map;
+use function array_filter;
+use function count;
+use function in_array;
+use function end;
+use function reset;
+use function method_exists;
+use function is_object;
+
 class Collection implements IteratorAggregate, Countable, JsonSerializable
 {
     protected array $items = [];
@@ -60,6 +71,11 @@ class Collection implements IteratorAggregate, Countable, JsonSerializable
     public function isEmpty(): bool
     {
         return empty($this->items);
+    }
+
+    public function isNotEmpty(): bool
+    {
+        return !$this->isEmpty();
     }
 
     public function count(): int
