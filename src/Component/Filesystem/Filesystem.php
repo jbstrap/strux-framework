@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Strux\Component\Http;
+namespace Strux\Component\Filesystem;
 
 use RuntimeException;
 use Strux\Component\Config\Config;
 
-class Filesystem
+class Filesystem implements FilesystemInterface
 {
     private Config $config;
     private array $diskConfig;

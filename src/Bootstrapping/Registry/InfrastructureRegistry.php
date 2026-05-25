@@ -20,6 +20,8 @@ use Strux\Component\Session\SessionManager;
 use Strux\Component\Validation\Validator;
 use Strux\Component\Validation\ValidatorInterface;
 use Strux\Component\View\ViewInterface;
+use Strux\Component\Filesystem\Filesystem;
+use Strux\Component\Filesystem\FilesystemInterface;
 use Strux\Support\Helpers\Flash;
 use Strux\Support\Helpers\FlashInterface;
 
@@ -27,6 +29,11 @@ class InfrastructureRegistry extends ServiceRegistry
 {
     public function build(): void
     {
+        $this->container->singleton(
+            FilesystemInterface::class,
+            static fn(ContainerInterface $c) => new Filesystem()
+        );
+
         $this->container->singleton(
             SessionInterface::class,
             static fn(ContainerInterface $c) => new SessionManager(

@@ -6,6 +6,7 @@ namespace Strux\Component\Http;
 
 use Psr\Http\Message\UploadedFileInterface;
 use RuntimeException;
+use Strux\Component\Filesystem\FilesystemInterface;
 
 class UploadedFile
 {
@@ -43,7 +44,12 @@ class UploadedFile
             $this->validate($validationRules);
         }
 
-        $filesystem = new Filesystem($disk);
+        $filesystem = container(\Strux\Component\Filesystem\FilesystemInterface::class);
+        if ($disk) {
+            $filesystem = clone $filesystem;
+            $filesystem->disk($disk);
+        }
+
         $fileName = $this->hashName($path);
 
         $targetPath = $filesystem->path($fileName);

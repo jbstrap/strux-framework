@@ -124,6 +124,35 @@ trait HasAttributes
         return null;
     }
 
+    public function getOriginal(?string $key = null): mixed
+    {
+        if ($key === null) {
+            return $this->_original;
+        }
+        return $this->_original[$key] ?? null;
+    }
+
+    public function isDirty(?string $key = null): bool
+    {
+        $changes = $this->getChanges();
+        if ($key === null) {
+            return count($changes) > 0;
+        }
+        return array_key_exists($key, $changes);
+    }
+
+    public function getChanges(): array
+    {
+        $changes = [];
+        $current = $this->_getPublicPropertiesForDb();
+        foreach ($current as $key => $value) {
+            if (!array_key_exists($key, $this->_original) || $this->_original[$key] !== $value) {
+                $changes[$key] = $value;
+            }
+        }
+        return $changes;
+    }
+
     public function hide(array $fields, ?callable $condition = null): static
     {
         if ($condition !== null && !$condition()) {
