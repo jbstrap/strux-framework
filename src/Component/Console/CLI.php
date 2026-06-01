@@ -60,24 +60,35 @@ class CLI
 
         // Model (Entity)
         $this->register(
-            'new:entity {name} [--domain|-d] [--migrate|-m]',
+            'new:entity {name} [--domain|-d] [--migrate|-m] [--uuid] [--ulid]',
             'Create entity',
             function ($n = null, $o = []) {
                 if (!is_string($n) || empty($n)) {
-                    echo "\033[31mError: Entity name is required.\033[0m\nUsage: php bin/console new:entity <Name> [--domain=<Name>] [--migrate]\n";
+                    echo "\033[31mError: Entity name is required.\033[0m\nUsage: php bin/console new:entity <Name> [--domain=<Name>] [--migrate] [--uuid|--ulid]\n";
                     return;
                 }
+
+                if (!empty($o['uuid']) && !empty($o['ulid'])) {
+                    echo "\033[31mError: --uuid and --ulid are mutually exclusive. Use only one.\033[0m\n";
+                    return;
+                }
+
+                $idType = 'none';
+                if (!empty($o['uuid'])) $idType = 'uuid';
+                if (!empty($o['ulid'])) $idType = 'ulid';
+
                 $this->createModel(
                     $n,
                     $o['domain'] ?? $o['d'] ?? 'General',
-                    $o['migrate'] ?? $o['m'] ?? false
+                    $o['migrate'] ?? $o['m'] ?? false,
+                    $idType
                 );
             }
         );
         // Alias for convenience
-        $this->commands['new:model {name} [--domain|-d] [--migrate|-m]'] = &$this->commands['new:entity {name} [--domain|-d] [--migrate|-m]'];
-        $this->commands['g:e'] = &$this->commands['new:entity {name} [--domain|-d] [--migrate|-m]'];
-        $this->commands['g:m'] = &$this->commands['new:entity {name} [--domain|-d] [--migrate|-m]'];
+        $this->commands['new:model {name} [--domain|-d] [--migrate|-m] [--uuid] [--ulid]'] = &$this->commands['new:entity {name} [--domain|-d] [--migrate|-m] [--uuid] [--ulid]'];
+        $this->commands['g:e'] = &$this->commands['new:entity {name} [--domain|-d] [--migrate|-m] [--uuid] [--ulid]'];
+        $this->commands['g:m'] = &$this->commands['new:entity {name} [--domain|-d] [--migrate|-m] [--uuid] [--ulid]'];
 
         // Job
         $this->register(

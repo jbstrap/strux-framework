@@ -21,7 +21,7 @@ use Strux\Component\Form\Attributes\TelField;
 use Strux\Component\Form\Attributes\TextAreaField;
 use Strux\Component\Form\Attributes\URLField;
 use Strux\Component\Http\Request;
-use Strux\Component\ORM\Attributes\RelationAttribute;
+use Strux\Component\Database\ORM\Attributes\RelationAttribute;
 use Strux\Component\Validation\Validator;
 use Strux\Component\Validation\ValidatorInterface;
 use Strux\Support\ContainerBridge;

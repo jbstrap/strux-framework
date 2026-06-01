@@ -1,0 +1,150 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Strux\Component\Database\ORM\Dialect;
+
+abstract class SqlDialect
+{
+    /**
+     * Quote a table in keyword identifiers.
+     */
+    public function quoteTable(string $table): string
+    {
+        return $this->quote($table);
+    }
+
+    /**
+     * Quote a value in keyword identifiers.
+     */
+    public function quote(string $value): string
+    {
+        if (str_contains($value, ' as ')) {
+            $parts = explode(' as ', $value);
+            return $this->quote($parts[0]) . ' AS ' . $this->quote($parts[1]);
+        }
+
+        if (str_contains($value, '.')) {
+            return implode('.', array_map([$this, 'quote'], explode('.', $value)));
+        }
+
+        if ($value === '*') {
+            return $value;
+        }
+
+        return '"' . str_replace('"', '""', $value) . '"';
+    }
+
+    public function buildSelectQuery(array $query): string
+    {
+        $sql = "SELECT ";
+
+        if (!empty($query['distinct'])) {
+            $sql .= "DISTINCT ";
+        }
+
+        if (empty($query['selects'])) {
+            $sql .= $this->quoteTable($query['from']) . ".*";
+        } else {
+            $selectParts = [];
+            foreach ($query['selects'] as $select) {
+                $selectParts[] = (string) $select['sql'];
+            }
+            $sql .= implode(', ', $selectParts);
+        }
+
+        $sql .= " FROM " . $this->quoteTable($query['from']);
+
+        if (!empty($query['joins'])) {
+            foreach ($query['joins'] as $join) {
+                $sql .= " {$join['type']} JOIN " . $this->quoteTable($join['table']) . " ON " . $this->quote($join['first']) . " {$join['operator']} " . $this->quote($join['second']);
+            }
+        }
+
+        if (!empty($query['wheres'])) {
+            $sql .= " WHERE " . $this->compileWheres($query['wheres']);
+        }
+
+        if (!empty($query['groups'])) {
+            $sql .= " GROUP BY " . implode(', ', array_map([$this, 'quote'], $query['groups']));
+        }
+
+        if (!empty($query['havings'])) {
+            $sql .= " HAVING ";
+            foreach ($query['havings'] as $i => $having) {
+                if ($i > 0) {
+                    $sql .= " {$having['boolean']} ";
+                }
+                $sql .= $this->quote($having['column']) . " {$having['operator']} ?";
+            }
+        }
+
+        if (!empty($query['orders'])) {
+            $orderParts = array_map(function ($o) {
+                return $this->quote($o['column']) . " {$o['direction']}";
+            }, $query['orders']);
+            $sql .= " ORDER BY " . implode(', ', $orderParts);
+        }
+
+        if ($query['take'] !== null) {
+            $sql .= " LIMIT " . (int) $query['take'];
+        }
+
+        if ($query['skip'] !== null) {
+            $sql .= " OFFSET " . (int) $query['skip'];
+        }
+
+        return $sql;
+    }
+
+    protected function compileWheres(array $wheres): string
+    {
+        $sql = '';
+        foreach ($wheres as $i => $where) {
+            if ($i > 0) {
+                $boolean = strtoupper($where['boolean']);
+                $sql .= " $boolean ";
+            } elseif ($where['boolean'] === 'AND NOT' || $where['boolean'] === 'OR NOT') {
+                $sql .= 'NOT ';
+            }
+
+            if ($where['type'] === 'nested') {
+                $nestedSql = $this->compileWheres($where['query']['wheres'] ?? []);
+                if ($nestedSql) {
+                    $sql .= "($nestedSql)";
+                }
+            } elseif ($where['type'] === 'raw') {
+                $sql .= $where['sql'];
+            } elseif ($where['type'] === 'in' || $where['type'] === 'not_in') {
+                $placeholders = implode(', ', array_fill(0, count($where['values']), '?'));
+                $operator = ($where['type'] === 'in') ? 'IN' : 'NOT IN';
+                $sql .= $this->quote($where['column']) . " {$operator} ({$placeholders})";
+            } elseif ($where['type'] === 'basic') {
+                $sql .= $this->quote($where['column']) . " {$where['operator']} ?";
+            }
+        }
+        return $sql;
+    }
+
+    public function buildInsertQuery(string $table, array $columns, array $values): string
+    {
+        $columnsStr = implode(', ', array_map([$this, 'quote'], $columns));
+        $placeholdersStr = implode(', ', $values);
+        return "INSERT INTO " . $this->quoteTable($table) . " ($columnsStr) VALUES $placeholdersStr";
+    }
+
+    public function buildUpdateQuery(string $table, array $columns): string
+    {
+        $setClauses = implode(', ', array_map(function ($col) {
+            return $this->quote($col) . " = ?";
+        }, $columns));
+        return "UPDATE " . $this->quoteTable($table) . " SET $setClauses";
+    }
+
+    public function buildDeleteQuery(string $table): string
+    {
+        return "DELETE FROM " . $this->quoteTable($table);
+    }
+
+    abstract public function buildUpsertQuery(string $table, array $columns, array $update): string;
+}

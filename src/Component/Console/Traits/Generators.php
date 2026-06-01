@@ -105,7 +105,7 @@ PHP;
         }
     }
 
-    private function createModel(string $name, string $domain = 'General', bool $createMigration = false): void
+    private function createModel(string $name, string $domain = 'General', bool $createMigration = false, string $idType = 'none'): void
     {
         try {
             $filePath = $this->getPathForType('entity', $name, $domain);
@@ -121,6 +121,14 @@ PHP;
 
             $tableName = Utils::getPluralName($className);
 
+            if ($idType === 'uuid') {
+                $idProperty = "#[Id(autoincrement: false, autoGenerate: 'uuid'), Column(type: Field::uuid)]\n    public string \$id = '';";
+            } elseif ($idType === 'ulid') {
+                $idProperty = "#[Id(autoincrement: false, autoGenerate: 'ulid'), Column(type: Field::ulid)]\n    public string \$id = '';";
+            } else {
+                $idProperty = "#[Id, Column]\n    public ?int \$id = null;";
+            }
+
             $content = <<<PHP
 <?php
 
@@ -132,13 +140,12 @@ use Strux\Component\Database\Attributes\Table;
 use Strux\Component\Database\Attributes\Column;
 use Strux\Component\Database\Attributes\Id;
 use Strux\Component\Database\Types\Field;
-use Strux\Component\ORM\Model;
+use Strux\Component\Database\ORM\Model;
 
 #[Table('{$tableName}')]
 class {$className} extends Model
 {
-    #[Id, Column]
-    public ?int \$id = null;
+    {$idProperty}
 
     #[Column(type: Field::string, length: 150)]
     public string \$name;
@@ -435,8 +442,8 @@ use Strux\Component\Database\Attributes\Id;
 use Strux\Component\Database\Attributes\Table;
 use Strux\Component\Database\Attributes\Unique;
 use Strux\Component\Database\Types\Field;
-use Strux\Component\ORM\Attributes\OwnedByMany;
-use Strux\Component\ORM\Model;
+use Strux\Component\Database\ORM\Attributes\OwnedByMany;
+use Strux\Component\Database\ORM\Model;
 use Strux\Support\Collection;
 
 #[Table('users')]
@@ -515,8 +522,8 @@ use Strux\Component\Database\Attributes\Column;
 use Strux\Component\Database\Attributes\Id;
 use Strux\Component\Database\Attributes\Table;
 use Strux\Component\Database\Attributes\Unique;
-use Strux\Component\ORM\Attributes\OwnedByMany;
-use Strux\Component\ORM\Model;
+use Strux\Component\Database\ORM\Attributes\OwnedByMany;
+use Strux\Component\Database\ORM\Model;
 use Strux\Support\Collection;
 
 #[Table('roles')]
@@ -557,8 +564,8 @@ use Strux\Component\Database\Attributes\Column;
 use Strux\Component\Database\Attributes\Id;
 use Strux\Component\Database\Attributes\Table;
 use Strux\Component\Database\Attributes\Unique;
-use Strux\Component\ORM\Attributes\OwnedByMany;
-use Strux\Component\ORM\Model;
+use Strux\Component\Database\ORM\Attributes\OwnedByMany;
+use Strux\Component\Database\ORM\Model;
 use Strux\Support\Collection;
 
 #[Table('permissions')]

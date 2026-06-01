@@ -99,4 +99,80 @@ class Utils
 
         return $baseName . 's';
     }
+
+    /**
+     * Generate an RFC 4122 v4 UUID using cryptographically secure randomness.
+     *
+     * @return string e.g., "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+     */
+    public static function uuid(): string
+    {
+        $bytes = random_bytes(16);
+
+        // Set version to 0100 (UUID v4)
+        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+
+        // Set variant to 10xx (RFC 4122)
+        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
+    }
+
+    /**
+     * Generate a ULID (Universally Unique Lexicographically Sortable Identifier).
+     *
+     * 26-character Crockford Base32 encoded value:
+     *   - First 10 chars: 48-bit millisecond timestamp
+     *   - Last 16 chars: 80-bit random value
+     *
+     * @return string e.g., "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+     */
+    public static function ulid(): string
+    {
+        $timestamp = (int) floor(microtime(true) * 1000);
+
+        // 48-bit timestamp as big-endian (take last 6 bytes from 8-byte pack)
+        $timestampBytes = substr(pack('J', $timestamp), 2, 6);
+
+        // 80 bits of randomness
+        $randomBytes = random_bytes(10);
+
+        return self::encodeCrockfordBase32($timestampBytes . $randomBytes, 26);
+    }
+
+    /**
+     * Encode binary data as Crockford Base32.
+     *
+     * Crockford alphabet: 0123456789ABCDEFGHJKMNPQRSTVWXYZ
+     * (excludes I, L, O, U to avoid confusion)
+     *
+     * @param string $bytes Binary input
+     * @param int    $charCount Number of base32 characters to produce
+     * @return string Crockford Base32 encoded string
+     */
+    private static function encodeCrockfordBase32(string $bytes, int $charCount): string
+    {
+        $alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+        $result = '';
+        $buffer = 0;
+        $bits = 0;
+        $len = strlen($bytes);
+
+        for ($i = 0; $i < $len; $i++) {
+            $buffer = ($buffer << 8) | ord($bytes[$i]);
+            $bits += 8;
+
+            while ($bits >= 5) {
+                $bits -= 5;
+                $result .= $alphabet[($buffer >> $bits) & 0x1f];
+            }
+        }
+
+        if ($bits > 0) {
+            $buffer <<= (5 - $bits);
+            $result .= $alphabet[$buffer & 0x1f];
+        }
+
+        return $result;
+    }
 }

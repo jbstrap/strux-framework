@@ -9,7 +9,7 @@ use ReflectionClass;
 use ReflectionNamedType;
 use ReflectionProperty;
 use Strux\Component\Config\DirectoryInterface;
-use Strux\Component\ORM\Attributes\RelationAttribute;
+use Strux\Component\Database\ORM\Attributes\RelationAttribute;
 use Strux\Support\ContainerBridge;
 
 trait FormCommands
@@ -105,7 +105,7 @@ trait FormCommands
                     }
                 }
 
-                echo "\033[32m✓\033[0m Inferred " . count($fields) . " fields from \033[36m$modelClass\033[0m\n";
+                echo "\033[32mâœ“\033[0m Inferred " . count($fields) . " fields from \033[36m$modelClass\033[0m\n";
             }
 
             if (!$noSubmit && !empty($fields)) {
@@ -172,11 +172,11 @@ PHP;
             file_put_contents($outputPath, $content);
 
             $relativePath = str_replace($this->getRootPath() . '/', '', $outputPath);
-            echo "\033[32m✓\033[0m Form created: \033[36m$relativePath\033[0m\n";
+            echo "\033[32mâœ“\033[0m Form created: \033[36m$relativePath\033[0m\n";
             if ($infer) {
-                echo "  → " . count($fields) . " fields inferred from \033[36m$infer\033[0m\n";
+                echo "  â†’ " . count($fields) . " fields inferred from \033[36m$infer\033[0m\n";
             }
-            echo "  → Use: new {$className}(\$request) or \$this->forms->create({$className}::class)\n";
+            echo "  â†’ Use: new {$className}(\$request) or \$this->forms->create({$className}::class)\n";
 
         } catch (Exception $e) {
             echo "\033[31mError: " . $e->getMessage() . "\033[0m\n";

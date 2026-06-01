@@ -11,8 +11,8 @@ use Strux\Component\Database\Attributes\Id;
 use Strux\Component\Database\Attributes\Table;
 use Strux\Component\Database\Attributes\Unique;
 use Strux\Component\Database\Types\Field;
-use Strux\Component\ORM\Attributes\OwnedBy;
-use Strux\Component\ORM\Attributes\OwnedByMany;
+use Strux\Component\Database\ORM\Attributes\OwnedBy;
+use Strux\Component\Database\ORM\Attributes\OwnedByMany;
 use Strux\Support\Helpers\Utils;
 
 class Blueprint
