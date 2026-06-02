@@ -78,14 +78,25 @@ class ModelBuilder
 
         $colsSql = implode(",\n\t\t\t\t", $columns);
 
-        $engine = $this->dbConfig['engine'] ?: 'InnoDB';
+        $engine = $this->dbConfig['engine'] ?? 'InnoDB';
         $charset = $this->dbConfig['charset'] ?? 'utf8mb4';
         $collation = $this->dbConfig['collation'] ?? 'utf8mb4_unicode_ci';
 
+        $driver = $this->db ? $this->db->getAttribute(PDO::ATTR_DRIVER_NAME) : 'mysql';
+        $dialect = match ($driver) {
+            'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+            'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
+            'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
+            'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+            default => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+        };
+
         return [
-            "CREATE TABLE IF NOT EXISTS `$tableName` (
-                $colsSql
-            ) ENGINE=$engine DEFAULT CHARSET=$charset COLLATE=$collation;"
+            $dialect->buildCreateTableQuery($tableName, $columns, [
+                'engine' => $engine,
+                'charset' => $charset,
+                'collation' => $collation
+            ])
         ];
     }
 
@@ -298,13 +309,27 @@ class ModelBuilder
             return [];
 
         try {
-            $stmt = $this->db->query("DESCRIBE `$tableName`");
+            $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+            $dialect = match ($driver) {
+                'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+                'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
+                'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
+                'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+                default => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+            };
+
+            $stmt = $this->db->query($dialect->buildShowColumnsQuery($tableName));
             $columns = [];
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $columns[$row['Field']] = [
-                    'type' => $row['Type'],
-                    'nullable' => $row['Null'],
-                    'default' => $row['Default'],
+                $field = $row['Field'] ?? $row['name'];
+                $type = $row['Type'] ?? $row['type'];
+                $nullable = $row['Null'] ?? ($row['notnull'] ? 'NO' : 'YES'); // sqlite gives notnull=0/1
+                $default = $row['Default'] ?? $row['dflt_value'];
+
+                $columns[$field] = [
+                    'type' => $type,
+                    'nullable' => $nullable,
+                    'default' => $default,
                     'extra' => $row['Extra'] ?? '',
                 ];
             }
@@ -320,8 +345,17 @@ class ModelBuilder
             return false;
 
         try {
-            $result = $this->db->query("SHOW TABLES LIKE '$table'");
-            return !empty($result->fetchAll());
+            $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+            $dialect = match ($driver) {
+                'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+                'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
+                'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
+                'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+                default => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+            };
+
+            $result = $this->db->query($dialect->buildTableExistsQuery($table));
+            return $result && count($result->fetchAll()) > 0;
         } catch (\Exception $e) {
             return false;
         }

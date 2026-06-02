@@ -56,7 +56,7 @@ trait HasValidation
                             $newRuleStr = "unique[{$table}, {$col}, {$pkValue}, {$pkName}]";
                             
                             if (is_string($key)) {
-                                $newFieldRules[$newRuleStr] = $rule; // Preserve custom error message
+                                $newFieldRules[$newRuleStr] = $rule;
                             } else {
                                 $newFieldRules[] = $newRuleStr;
                             }
@@ -106,7 +106,6 @@ trait HasValidation
             $validator = new Validator();
         }
 
-        // Get properties to validate. Since we want to validate the DB properties:
         $data = method_exists($this, '_getPublicPropertiesForDb') 
             ? $this->_getPublicPropertiesForDb() 
             : (array) $this;

@@ -17,6 +17,7 @@ class DatabaseSessionHandler implements SessionHandlerInterface
     private string $table;
     private AuthManager $auth;
     private ServerRequestInterface $request;
+    private \Strux\Component\Database\ORM\Dialect\SqlDialect $dialect;
 
     public function __construct(PDO $pdo, string $table, AuthManager $auth, ServerRequestInterface $request)
     {
@@ -24,6 +25,15 @@ class DatabaseSessionHandler implements SessionHandlerInterface
         $this->table = $table;
         $this->auth = $auth;
         $this->request = $request;
+
+        $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $this->dialect = match ($driver) {
+            'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+            'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
+            'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
+            'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+            default => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+        };
     }
 
     public function open(string $path, string $name): bool
@@ -42,7 +52,11 @@ class DatabaseSessionHandler implements SessionHandlerInterface
     public function read(string $id): string|false
     {
         try {
-            $stmt = $this->db->prepare("SELECT payload FROM `{$this->table}` WHERE id = :id");
+            $quotedTable = $this->dialect->quoteTable($this->table);
+            $payloadCol = $this->dialect->quote('payload');
+            $idCol = $this->dialect->quote('id');
+
+            $stmt = $this->db->prepare("SELECT $payloadCol FROM $quotedTable WHERE $idCol = :id");
             $stmt->execute([':id' => $id]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -83,21 +97,57 @@ class DatabaseSessionHandler implements SessionHandlerInterface
 
         try {
             // 3. Upsert Session
-            // MySQL/MariaDB syntax:
-            $stmt = $this->db->prepare(
-                "INSERT INTO `{$this->table}` (id, user_id, ip_address, user_agent, payload, last_activity) 
-                 VALUES (:id, :user_id, :ip_address, :user_agent, :payload, :access)
-                 ON DUPLICATE KEY UPDATE 
-                    user_id = VALUES(user_id),
-                    ip_address = VALUES(ip_address),
-                    user_agent = VALUES(user_agent),
-                    payload = VALUES(payload),
-                    last_activity = VALUES(last_activity)"
-            );
+            $quotedTable = $this->dialect->quoteTable($this->table);
+            $idCol = $this->dialect->quote('id');
+            $userIdCol = $this->dialect->quote('user_id');
+            $ipCol = $this->dialect->quote('ip_address');
+            $uaCol = $this->dialect->quote('user_agent');
+            $payloadCol = $this->dialect->quote('payload');
+            $activityCol = $this->dialect->quote('last_activity');
 
-            // For SQLite, use "INSERT OR REPLACE INTO..."
-            // Logic to detect driver and switch syntax might be needed if supporting both.
-            // Assuming MySQL based on previous context.
+            $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+            if ($driver === 'mysql') {
+                $sql = "INSERT INTO $quotedTable ($idCol, $userIdCol, $ipCol, $uaCol, $payloadCol, $activityCol) 
+                     VALUES (:id, :user_id, :ip_address, :user_agent, :payload, :access)
+                     ON DUPLICATE KEY UPDATE 
+                        $userIdCol = VALUES($userIdCol),
+                        $ipCol = VALUES($ipCol),
+                        $uaCol = VALUES($uaCol),
+                        $payloadCol = VALUES($payloadCol),
+                        $activityCol = VALUES($activityCol)";
+            } elseif ($driver === 'sqlite') {
+                $sql = "INSERT OR REPLACE INTO $quotedTable ($idCol, $userIdCol, $ipCol, $uaCol, $payloadCol, $activityCol) 
+                     VALUES (:id, :user_id, :ip_address, :user_agent, :payload, :access)";
+            } elseif ($driver === 'pgsql') {
+                $sql = "INSERT INTO $quotedTable ($idCol, $userIdCol, $ipCol, $uaCol, $payloadCol, $activityCol) 
+                     VALUES (:id, :user_id, :ip_address, :user_agent, :payload, :access)
+                     ON CONFLICT ($idCol) DO UPDATE SET 
+                        $userIdCol = EXCLUDED.$userIdCol,
+                        $ipCol = EXCLUDED.$ipCol,
+                        $uaCol = EXCLUDED.$uaCol,
+                        $payloadCol = EXCLUDED.$payloadCol,
+                        $activityCol = EXCLUDED.$activityCol";
+            } elseif ($driver === 'sqlsrv') {
+                $sql = "MERGE INTO $quotedTable WITH (HOLDLOCK) AS target
+                     USING (SELECT :id AS id) AS source
+                     ON target.$idCol = source.id
+                     WHEN MATCHED THEN
+                        UPDATE SET 
+                           $userIdCol = :user_id,
+                           $ipCol = :ip_address,
+                           $uaCol = :user_agent,
+                           $payloadCol = :payload,
+                           $activityCol = :access
+                     WHEN NOT MATCHED THEN
+                        INSERT ($idCol, $userIdCol, $ipCol, $uaCol, $payloadCol, $activityCol)
+                        VALUES (:id, :user_id, :ip_address, :user_agent, :payload, :access);";
+            } else {
+                // Fallback basic
+                $sql = "INSERT INTO $quotedTable ($idCol, $userIdCol, $ipCol, $uaCol, $payloadCol, $activityCol) 
+                     VALUES (:id, :user_id, :ip_address, :user_agent, :payload, :access)";
+            }
+
+            $stmt = $this->db->prepare($sql);
 
             return $stmt->execute([
                 ':id' => $id,
@@ -118,7 +168,10 @@ class DatabaseSessionHandler implements SessionHandlerInterface
     public function destroy(string $id): bool
     {
         try {
-            $stmt = $this->db->prepare("DELETE FROM `{$this->table}` WHERE id = :id");
+            $quotedTable = $this->dialect->quoteTable($this->table);
+            $idCol = $this->dialect->quote('id');
+
+            $stmt = $this->db->prepare("DELETE FROM $quotedTable WHERE $idCol = :id");
             $stmt->execute([':id' => $id]);
             return true;
         } catch (PDOException $e) {
@@ -133,7 +186,10 @@ class DatabaseSessionHandler implements SessionHandlerInterface
     {
         $old = time() - $max_lifetime;
         try {
-            $stmt = $this->db->prepare("DELETE FROM `{$this->table}` WHERE last_activity < :old");
+            $quotedTable = $this->dialect->quoteTable($this->table);
+            $activityCol = $this->dialect->quote('last_activity');
+
+            $stmt = $this->db->prepare("DELETE FROM $quotedTable WHERE $activityCol < :old");
             $stmt->execute([':old' => $old]);
             return $stmt->rowCount();
         } catch (PDOException $e) {

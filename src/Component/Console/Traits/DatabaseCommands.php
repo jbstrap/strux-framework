@@ -7,9 +7,15 @@ namespace Strux\Component\Console\Traits;
 use Exception;
 use PDO;
 use Strux\Component\Config\Config;
+use Strux\Component\Config\DirectoryInterface;
+use Strux\Component\Config\DirectoryResolver;
 use Strux\Component\Database\Migration\Migration;
 
 use Strux\Component\Database\MigrationGenerator;
+use Strux\Component\Database\ORM\Dialect\MySqlDialect;
+use Strux\Component\Database\ORM\Dialect\PostgresDialect;
+use Strux\Component\Database\ORM\Dialect\SqliteDialect;
+use Strux\Component\Database\ORM\Dialect\SqlServerDialect;
 use Strux\Component\Database\Seeder\SeederRunner;
 
 trait DatabaseCommands
@@ -38,14 +44,27 @@ trait DatabaseCommands
     {
         $table = $this->getMigrationTable();
         $rootPath = defined('ROOT_PATH') ? ROOT_PATH : dirname(__DIR__, 4);
-        $migrationDir = ($this->container->has(\Strux\Component\Config\DirectoryInterface::class) ? $this->container->get(\Strux\Component\Config\DirectoryInterface::class)->get('migrations') : \Strux\Component\Config\DirectoryResolver::getDefaults($rootPath)['migrations']);
+        $migrationDir = ($this->container->has(DirectoryInterface::class) 
+        ? $this->container->get(DirectoryInterface::class)->get('migrations') 
+        : DirectoryResolver::getDefaults($rootPath)['migrations']);
 
-        $sql = "CREATE TABLE IF NOT EXISTS `$table` (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            migration VARCHAR(255) NOT NULL,
-            batch INT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB;";
+        $driver = $this->getPdo()->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $dialect = match ($driver) {
+            'mysql' => new MySqlDialect(),
+            'pgsql' => new PostgresDialect(),
+            'sqlite' => new SqliteDialect(),
+            'sqlsrv' => new SqlServerDialect(),
+            default => throw new Exception("Unsupported database driver: $driver"),
+        };
+
+        $columns = [
+            "id INT AUTO_INCREMENT PRIMARY KEY",
+            "migration VARCHAR(255) NOT NULL",
+            "batch INT NOT NULL",
+            "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        ];
+
+        $sql = $dialect->buildCreateTableQuery($table, $columns);
 
         $this->initTable($table, $sql, $verbose, $migrationDir, 'Database');
     }
@@ -65,7 +84,7 @@ trait DatabaseCommands
                 echo "Targeting specific model: $model\n";
             }
 
-            $generator = new MigrationGenerator($config, $db, $this->container->get(\Strux\Component\Config\DirectoryInterface::class));
+            $generator = new MigrationGenerator($config, $db, $this->container->get(DirectoryInterface::class));
             $generator->generate($model, $name);
         } catch (Exception $e) {
             echo "Migration generation failed: " . $e->getMessage() . "\n";
@@ -81,12 +100,27 @@ trait DatabaseCommands
 
         $this->initDatabase();
 
-        $ranMigrations = $pdo->query("SELECT migration FROM `$table`")->fetchAll(PDO::FETCH_COLUMN);
-        $migrationDir = $this->container->has(\Strux\Component\Config\DirectoryInterface::class) ? $this->container->get(\Strux\Component\Config\DirectoryInterface::class)->get('migrations') : \Strux\Component\Config\DirectoryResolver::getDefaults($rootPath)['migrations'];
+        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $dialect = match ($driver) {
+            'mysql' => new MySqlDialect(),
+            'pgsql' => new PostgresDialect(),
+            'sqlite' => new SqliteDialect(),
+            'sqlsrv' => new SqlServerDialect(),
+            default => new MySqlDialect(),
+        };
+
+        $quotedTable = $dialect->quoteTable($table);
+        $migrationCol = $dialect->quote('migration');
+        $batchCol = $dialect->quote('batch');
+
+        $ranMigrations = $pdo->query("SELECT $migrationCol FROM $quotedTable")->fetchAll(PDO::FETCH_COLUMN);
+        $migrationDir = ($this->container->has(DirectoryInterface::class) 
+            ? $this->container->get(DirectoryInterface::class)->get('migrations') 
+            : DirectoryResolver::getDefaults($rootPath)['migrations']);
         $migrationFiles = glob($migrationDir . '/*.php');
         sort($migrationFiles);
 
-        $batch = empty($ranMigrations) ? 1 : $pdo->query("SELECT MAX(batch) FROM `$table`")->fetchColumn() + 1;
+        $batch = empty($ranMigrations) ? 1 : $pdo->query("SELECT MAX($batchCol) FROM $quotedTable")->fetchColumn() + 1;
 
         $migrationsToRun = array_filter($migrationFiles, fn($file) => !in_array(basename($file), $ranMigrations));
 
@@ -104,7 +138,7 @@ trait DatabaseCommands
                 $migration->up();
             }
 
-            $stmt = $pdo->prepare("INSERT INTO `$table` (migration, batch) VALUES (?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO $quotedTable ($migrationCol, $batchCol) VALUES (?, ?)");
             $stmt->execute([basename($file), $batch]);
         }
 
@@ -118,14 +152,28 @@ trait DatabaseCommands
         $rootPath = defined('ROOT_PATH') ? ROOT_PATH : dirname(__DIR__, 4);
         $table = $this->getMigrationTable();
 
-        $lastBatch = $pdo->query("SELECT MAX(batch) FROM `$table`")->fetchColumn();
+        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $dialect = match ($driver) {
+            'mysql' => new MySqlDialect(),
+            'pgsql' => new PostgresDialect(),
+            'sqlite' => new SqliteDialect(),
+            'sqlsrv' => new SqlServerDialect(),
+            default => new MySqlDialect(),
+        };
+
+        $quotedTable = $dialect->quoteTable($table);
+        $migrationCol = $dialect->quote('migration');
+        $batchCol = $dialect->quote('batch');
+        $idCol = $dialect->quote('id');
+
+        $lastBatch = $pdo->query("SELECT MAX($batchCol) FROM $quotedTable")->fetchColumn();
 
         if (!$lastBatch) {
             echo "No migrations to revert.\n";
             return;
         }
 
-        $migrations = $pdo->prepare("SELECT migration FROM `$table` WHERE batch = ? ORDER BY id DESC");
+        $migrations = $pdo->prepare("SELECT $migrationCol FROM $quotedTable WHERE $batchCol = ? ORDER BY $idCol DESC");
         $migrations->execute([$lastBatch]);
         $filesToRevert = $migrations->fetchAll(PDO::FETCH_COLUMN);
 
@@ -143,7 +191,7 @@ trait DatabaseCommands
             } else {
                 echo "Warning: Migration file '$migrationName' not found. Skipping rollback logic, but removing record.\n";
             }
-            $del = $pdo->prepare("DELETE FROM `$table` WHERE migration = ?");
+            $del = $pdo->prepare("DELETE FROM $quotedTable WHERE $migrationCol = ?");
             $del->execute([$migrationName]);
         }
 
@@ -231,22 +279,16 @@ trait DatabaseCommands
         $pdo = $this->getPdo();
 
 
-        try {
-            $pdo->exec('SET FOREIGN_KEY_CHECKS=0;');
+        $driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
+        $dialect = match ($driver) {
+            'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+            'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
+            'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
+            'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+            default => throw new \Exception("Unsupported database driver: $driver"),
+        };
 
-            $stmt = $pdo->query('SHOW TABLES');
-            $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-            foreach ($tables as $table) {
-                $pdo->exec("DROP TABLE IF EXISTS `$table`");
-                echo "Dropped table: $table\n";
-            }
-
-            $pdo->exec('SET FOREIGN_KEY_CHECKS=1;');
-        } catch (Exception $e) {
-            $pdo->exec('SET FOREIGN_KEY_CHECKS=1;');
-            throw $e;
-        }
+        $dialect->dropAllTables($pdo);
     }
 
     private function showCurrentRevision(): void
@@ -254,7 +296,31 @@ trait DatabaseCommands
         $pdo = $this->getPdo();
         $table = $this->getMigrationTable();
         try {
-            $last = $pdo->query("SELECT migration, batch, created_at FROM `$table` ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+            $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+            $dialect = match ($driver) {
+                'mysql' => new MySqlDialect(),
+                'pgsql' => new PostgresDialect(),
+                'sqlite' => new SqliteDialect(),
+                'sqlsrv' => new SqlServerDialect(),
+                default => new MySqlDialect(),
+            };
+
+            $quotedTable = $dialect->quoteTable($table);
+            $migrationCol = $dialect->quote('migration');
+            $batchCol = $dialect->quote('batch');
+            $createdAtCol = $dialect->quote('created_at');
+            $idCol = $dialect->quote('id');
+            
+            // Limit 1 differs slightly in SQL Server but PDO often supports the generic one.
+            // For proper compatibility, we should rely on standard SQL or dialect limits if needed, 
+            // but we'll use LIMIT 1 or TOP 1 based on dialect if possible. SQL Server uses TOP.
+            $sql = "SELECT $migrationCol, $batchCol, $createdAtCol FROM $quotedTable ORDER BY $idCol DESC";
+            $sql .= ($driver === 'sqlsrv') ? "" : " LIMIT 1"; 
+            if ($driver === 'sqlsrv') {
+                $sql = "SELECT TOP 1 $migrationCol, $batchCol, $createdAtCol FROM $quotedTable ORDER BY $idCol DESC";
+            }
+
+            $last = $pdo->query($sql)->fetch(PDO::FETCH_ASSOC);
 
             if ($last) {
                 echo "Current Revision: {$last['migration']} (Batch {$last['batch']})\n";
@@ -272,7 +338,18 @@ trait DatabaseCommands
         $pdo = $this->getPdo();
         $table = $this->getMigrationTable();
         try {
-            $history = $pdo->query("SELECT * FROM `$table` ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
+            $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+            $dialect = match ($driver) {
+                'mysql' => new MySqlDialect(),
+                'pgsql' => new PostgresDialect(),
+                'sqlite' => new SqliteDialect(),
+                'sqlsrv' => new SqlServerDialect(),
+                default => new MySqlDialect(),
+            };
+            $quotedTable = $dialect->quoteTable($table);
+            $idCol = $dialect->quote('id');
+
+            $history = $pdo->query("SELECT * FROM $quotedTable ORDER BY $idCol DESC")->fetchAll(PDO::FETCH_ASSOC);
 
             if (empty($history)) {
                 echo "No migration history found.\n";

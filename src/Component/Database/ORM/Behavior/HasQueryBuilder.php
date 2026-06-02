@@ -14,6 +14,12 @@ use Strux\Support\Bridge\Request;
 use Strux\Support\Collection;
 use Strux\Component\Database\ORM\Dialect\SqlDialect;
 use Strux\Component\Database\ORM\Dialect\MySqlDialect;
+use Strux\Component\Database\ORM\Dialect\PostgresDialect;
+use Strux\Component\Database\ORM\Dialect\SqliteDialect;
+use Strux\Component\Database\ORM\Dialect\SqlServerDialect;
+use Strux\Support\ContainerBridge;
+use Strux\Component\Cache\Cache;
+use Strux\Component\Database\ORM\Attributes\Stash;
 
 trait HasQueryBuilder
 {
@@ -33,11 +39,22 @@ trait HasQueryBuilder
     private array $_compiledBindings = [];
     private bool $_isQueryBuilderInstance = false;
     private ?SqlDialect $_dialect = null;
+    private ?int $_stashFor = null;
+    private ?string $_stashKey = null;
 
     public function getDialect(): SqlDialect
     {
         if ($this->_dialect === null) {
-            $this->_dialect = new MySqlDialect();
+            $pdo = \Strux\Support\ContainerBridge::resolve(\PDO::class);
+            $driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
+
+            $this->_dialect = match($driver) {
+                'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+                'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
+                'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
+                'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+                default => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
+            };
         }
         return $this->_dialect;
     }
@@ -71,6 +88,8 @@ trait HasQueryBuilder
         $this->_skip = null;
         $this->_compiledBindings = [];
         $this->_with = [];
+        $this->_stashFor = null;
+        $this->_stashKey = null;
     }
 
     private function _getQueryBuilderInstance(): static
@@ -386,13 +405,45 @@ trait HasQueryBuilder
         $builder = $this->_getQueryBuilderInstance();
         $sql = $builder->_buildSelectSQL();
 
-        try {
-            $stmt = $builder->_execute($sql, $builder->_compiledBindings);
-        } catch (DatabaseException $e) {
-            throw new RuntimeException("Query Error: " . $e->getMessage() . " [SQL: $sql]");
+        $stashTtl = $builder->_stashFor;
+        if ($stashTtl === null) {
+            $reflection = new \ReflectionClass(static::class);
+            $stashAttr = $reflection->getAttributes(Stash::class);
+            if (!empty($stashAttr)) {
+                $stashTtl = $stashAttr[0]->newInstance()->ttl;
+            } else {
+                $stashTtl = 0;
+            }
         }
 
-        $results = $stmt->fetchAll();
+        if ($stashTtl > 0) {
+            try {
+                $cache = ContainerBridge::resolve(Cache::class);
+                $cacheKey = $builder->_stashKey ?? $builder->_generateStashKey($sql, $builder->_compiledBindings);
+                
+                if ($cache->has($cacheKey)) {
+                    $results = $cache->get($cacheKey);
+                } else {
+                    $stmt = $builder->_execute($sql, $builder->_compiledBindings);
+                    $results = $stmt->fetchAll();
+                    $cache->set($cacheKey, $results, $stashTtl);
+                }
+            } catch (\Throwable $e) {
+                // Fallback if cache fails or is unavailable
+                $stmt = $builder->_execute($sql, $builder->_compiledBindings);
+                $results = $stmt->fetchAll();
+            }
+        } else {
+            try {
+                $stmt = $builder->_execute($sql, $builder->_compiledBindings);
+                $results = $stmt->fetchAll();
+            } catch (DatabaseException $e) {
+                throw $e;
+            } catch (\Throwable $e) {
+                throw new RuntimeException("Query Error: " . $e->getMessage() . " [SQL: $sql]", 0, $e);
+            }
+        }
+
         $models = array_map(fn($row) => static::fromStorage($row), $results ?: []);
 
         if (!empty($models) && !empty($builder->_includes)) {
@@ -571,8 +622,38 @@ trait HasQueryBuilder
         $aggregateBuilder->selectRaw("{$function}({$column}) as aggregate");
 
         $sql = $aggregateBuilder->_buildSelectSQL();
-        $stmt = $aggregateBuilder->_execute($sql, $aggregateBuilder->_compiledBindings);
 
+        $stashTtl = $aggregateBuilder->_stashFor;
+        if ($stashTtl === null) {
+            $reflection = new \ReflectionClass(static::class);
+            $stashAttr = $reflection->getAttributes(Stash::class);
+            if (!empty($stashAttr)) {
+                $stashTtl = $stashAttr[0]->newInstance()->ttl;
+            } else {
+                $stashTtl = 0;
+            }
+        }
+
+        if ($stashTtl > 0) {
+            try {
+                $cache = ContainerBridge::resolve(Cache::class);
+                $cacheKey = $aggregateBuilder->_stashKey ?? $aggregateBuilder->_generateStashKey($sql, $aggregateBuilder->_compiledBindings);
+                
+                if ($cache->has($cacheKey)) {
+                    return $cache->get($cacheKey);
+                } else {
+                    $stmt = $aggregateBuilder->_execute($sql, $aggregateBuilder->_compiledBindings);
+                    $result = $stmt->fetchColumn();
+                    $cache->set($cacheKey, $result, $stashTtl);
+                    return $result;
+                }
+            } catch (\Throwable $e) {
+                $stmt = $aggregateBuilder->_execute($sql, $aggregateBuilder->_compiledBindings);
+                return $stmt->fetchColumn();
+            }
+        }
+
+        $stmt = $aggregateBuilder->_execute($sql, $aggregateBuilder->_compiledBindings);
         return $stmt->fetchColumn();
     }
 
@@ -710,6 +791,8 @@ trait HasQueryBuilder
         $to->_selects = $from->_selects;
         $to->_from = $from->_from;
         $to->_includes = $from->_includes;
+        $to->_stashFor = $from->_stashFor;
+        $to->_stashKey = $from->_stashKey;
     }
 
     // --- Debugging ---
@@ -740,5 +823,37 @@ trait HasQueryBuilder
             }
         }
         return $sql;
+    }
+
+    // --- Caching (Stash) ---
+
+    protected function stashFor(int $seconds, ?string $key = null): static
+    {
+        $builder = $this->_getQueryBuilderInstance();
+        $builder->_stashFor = $seconds;
+        if ($key !== null) {
+            $builder->_stashKey = $key;
+        }
+        return $builder;
+    }
+
+    protected function stashForever(?string $key = null): static
+    {
+        return $this->stashFor(31536000, $key); // Approx 1 year
+    }
+
+    public static function dropStash(string $key): void
+    {
+        try {
+            $cache = ContainerBridge::resolve(Cache::class);
+            $cache->delete($key);
+        } catch (\Throwable $e) {
+            // Ignore if cache is not available
+        }
+    }
+
+    private function _generateStashKey(string $sql, array $bindings): string
+    {
+        return 'stash_' . md5($sql . serialize($bindings));
     }
 }

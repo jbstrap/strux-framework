@@ -57,27 +57,48 @@ trait QueueCommands
         $table = $this->getQueueTable();
         $failedTable = $this->getQueueFailedTable();
 
-        $sql = "CREATE TABLE IF NOT EXISTS `$table` (
-            `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            `queue` VARCHAR(255) NOT NULL DEFAULT 'default',
-            `payload` LONGTEXT NOT NULL,
-            `attempts` TINYINT UNSIGNED NOT NULL DEFAULT 0,
-            `reserved_at` INT UNSIGNED NULL,
-            `available_at` INT UNSIGNED NOT NULL,
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX `queue_reserved_at` (`queue`, `reserved_at`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
+        $driver = $this->getPdo()->getAttribute(\PDO::ATTR_DRIVER_NAME);
+        $dialect = match ($driver) {
+            'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+            'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
+            'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
+            'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+            default => throw new \Exception("Unsupported database driver: $driver"),
+        };
+
+        $columns = [
+            "`id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY",
+            "`queue` VARCHAR(255) NOT NULL DEFAULT 'default'",
+            "`payload` LONGTEXT NOT NULL",
+            "`attempts` TINYINT UNSIGNED NOT NULL DEFAULT 0",
+            "`reserved_at` INT UNSIGNED NULL",
+            "`available_at` INT UNSIGNED NOT NULL",
+            "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        ];
+
+        if ($driver === 'mysql' || $driver === 'sqlite') {
+            $columns[] = "INDEX `queue_reserved_at` (`queue`, `reserved_at`)";
+        }
+
+        $sql = $dialect->buildCreateTableQuery($table, $columns);
+
+        if ($driver === 'pgsql' || $driver === 'sqlsrv') {
+            $indexSql = "CREATE INDEX IF NOT EXISTS queue_reserved_at ON {$table} (queue, reserved_at)";
+            $sql .= "; " . $indexSql . ";";
+        }
 
         $this->initTable($table, $sql, $verbose, null, 'Queue');
 
-        $failedSql = "CREATE TABLE IF NOT EXISTS `$failedTable` (
-            `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            `connection` VARCHAR(255) NOT NULL,
-            `queue` VARCHAR(255) NOT NULL,
-            `payload` LONGTEXT NOT NULL,
-            `exception` LONGTEXT NOT NULL,
-            `failed_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
+        $failedColumns = [
+            "`id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY",
+            "`connection` VARCHAR(255) NOT NULL",
+            "`queue` VARCHAR(255) NOT NULL",
+            "`payload` LONGTEXT NOT NULL",
+            "`exception` LONGTEXT NOT NULL",
+            "`failed_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        ];
+
+        $failedSql = $dialect->buildCreateTableQuery($failedTable, $failedColumns);
 
         $this->initTable($failedTable, $failedSql, $verbose, null, 'Failed Queue');
     }

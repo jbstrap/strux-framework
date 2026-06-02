@@ -75,10 +75,6 @@ trait HasTimestamps
         $createdAtColumn = $this->getCreatedAtColumn();
         $updatedAtColumn = $this->getUpdatedAtColumn();
 
-        // Check if timestamps are managed by DB (DEFAULT CURRENT_TIMESTAMP)
-        // If the user hasn't set them, we unset them from the attributes array
-        // so the database default kicks in.
-
         if (!$this->_exists && $createdAtColumn) {
             if (array_key_exists($createdAtColumn, $attributes) && $attributes[$createdAtColumn] === null) {
                 unset($attributes[$createdAtColumn]);

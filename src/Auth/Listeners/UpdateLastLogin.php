@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Strux\Auth\Listeners;
 
-use App\Domain\General\Entity\User;
+//use App\Domain\General\Entity\User;
 use DateTime;
 use Strux\Auth\Events\UserLoggedIn;
 
@@ -12,7 +12,7 @@ class UpdateLastLogin
 {
     public function handle(UserLoggedIn $event): void
     {
-        /** @var User $user */
+        // /** @var User $user */
         $user = $event->user;
 
         try {

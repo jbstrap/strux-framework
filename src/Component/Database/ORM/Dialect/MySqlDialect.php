@@ -32,4 +32,55 @@ class MySqlDialect extends SqlDialect
         $sql = $this->buildInsertQuery($table, $columns, ['']);
         return $sql;
     }
+
+    public function buildCreateTableQuery(string $table, array $columns, array $options = []): string
+    {
+        $engine = $options['engine'] ?? 'InnoDB';
+        $charset = $options['charset'] ?? 'utf8mb4';
+        $collation = $options['collation'] ?? 'utf8mb4_unicode_ci';
+
+        $columnsSql = implode(', ', $columns);
+        
+        $sql = "CREATE TABLE IF NOT EXISTS " . $this->quoteTable($table) . " (";
+        $sql .= $columnsSql;
+        $sql .= ") ENGINE={$engine} DEFAULT CHARSET={$charset} COLLATE={$collation};";
+
+        return $sql;
+    }
+
+    public function buildTableExistsQuery(string $table): string
+    {
+        return "SHOW TABLES LIKE '{$table}'";
+    }
+
+    public function buildShowColumnsQuery(string $table): string
+    {
+        return "DESCRIBE " . $this->quoteTable($table);
+    }
+
+    public function buildShowConstraintsQuery(string $table): string
+    {
+        return "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE 
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{$table}' 
+                AND REFERENCED_TABLE_NAME IS NOT NULL";
+    }
+
+    public function dropAllTables(\PDO $db): void
+    {
+        try {
+            $db->exec('SET FOREIGN_KEY_CHECKS=0;');
+            $stmt = $db->query('SHOW TABLES');
+            $tables = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+
+            foreach ($tables as $table) {
+                $db->exec("DROP TABLE IF EXISTS " . $this->quoteTable($table));
+                echo "Dropped table: $table\n";
+            }
+
+            $db->exec('SET FOREIGN_KEY_CHECKS=1;');
+        } catch (\Exception $e) {
+            $db->exec('SET FOREIGN_KEY_CHECKS=1;');
+            throw $e;
+        }
+    }
 }

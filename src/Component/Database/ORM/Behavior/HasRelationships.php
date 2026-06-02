@@ -30,7 +30,9 @@ use Strux\Component\Database\ORM\Attributes\OwnsOnePoly as OwnsOnePolyAttr;
 use Strux\Support\Collection;
 use Strux\Support\Helpers\Utils;
 
-use function array_merge;
+use function is_string;
+use function is_array;
+use function is_int;
 
 trait HasRelationships
 {
@@ -90,7 +92,6 @@ trait HasRelationships
 
     protected function eagerLoadRelations(array $models, array $relations): void
     {
-        // Handle case where relations array is list of strings vs assoc array
         $normalizedRelations = [];
         foreach ($relations as $key => $value) {
             if (is_int($key)) {
@@ -258,13 +259,10 @@ trait HasRelationships
 
     protected function ownedByAny(string $typeColumn, string $idColumn): OwnedByAnyRelation
     {
-        // For OwnedByAny, the related model depends on the typeColumn value.
-        // If not loaded, we need to instantiate it based on $this->{$typeColumn}.
         $type = $this->{$typeColumn} ?? null;
         if ($type && class_exists($type)) {
             $relatedInstance = new $type();
         } else {
-            // Provide a dummy model or handle null gracefully.
             $relatedInstance = new class extends Model {};
         }
 

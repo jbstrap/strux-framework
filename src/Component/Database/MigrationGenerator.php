@@ -36,6 +36,7 @@ class MigrationGenerator
         
         $this->srcPath = rtrim($this->directories->get('app'), '/\\');
     }
+    
     /**
      * @throws ReflectionException
      * @throws Exception
@@ -45,7 +46,6 @@ class MigrationGenerator
         $defaultConnection = $this->config->get('database.default');
         $dbConfig = $this->config->get("database.connections.$defaultConnection");
 
-        // Scan all available models first
         $availableModels = $this->scanModels();
 
         echo "Found " . count($availableModels) . " models with #[Table] attribute.\n";
@@ -54,7 +54,6 @@ class MigrationGenerator
         echo "src Path: " . $this->srcPath . "\n";
 
         if ($targetModel) {
-            // If the user passed a short name like "User", find the full class
             if (!str_contains($targetModel, '\\')) {
                 $targetModel = $this->resolveModelClass($targetModel, $availableModels);
             }
@@ -73,20 +72,17 @@ class MigrationGenerator
         $downQueries = [];
 
         foreach ($models as $modelClass) {
-            // 1. Tables
             $builder = new ModelBuilder($modelClass, $this->db, $dbConfig);
             $sql = $builder->generateSql();
             if (!empty($sql)) {
                 $tableQueries = array_merge($tableQueries, (array) $sql);
             }
 
-            // 2. Pivots
             $pivotSql = Blueprint::generatePivotTableSql($modelClass, $this->db, $dbConfig);
             if (!empty($pivotSql)) {
                 $tableQueries = array_merge($tableQueries, $pivotSql);
             }
-
-            // 3. Unique Indexes
+            
             $uniqueSql = Blueprint::generateUniqueConstraints($modelClass);
             if (!empty($uniqueSql)) {
                 $existingIndexes = $this->getExistingIndexes($modelClass);
@@ -98,7 +94,6 @@ class MigrationGenerator
                 }
             }
 
-            // 4. Constraints
             $fkSql = Blueprint::generateForeignKeyConstraints($modelClass, $this->db);
             if (!empty($fkSql)) {
                 $constraintQueries = array_merge($constraintQueries, $fkSql);
@@ -110,7 +105,6 @@ class MigrationGenerator
             }
         }
 
-        // Post-Processing: Separate Drops and Adds to prevent key errors
         $dropFkQueries = [];
         $otherTableQueries = [];
 
@@ -175,7 +169,6 @@ class MigrationGenerator
     private function scanModels(): array
     {
         $models = [];
-        // Target the Domain folder specifically
         $path = $this->srcPath . '/Domain';
 
         if (!is_dir($path)) {
@@ -186,19 +179,14 @@ class MigrationGenerator
 
         foreach ($iterator as $file) {
             if ($file->isFile() && $file->getExtension() === 'php') {
-                // Convert file path to Namespace
-                // E.g. C:\xampp\htdocs\custom\src\Domain\Identity\Entity\User.php
-                // Becomes: Application\Domain\Identity\Entity\User
-
                 $filePath = $file->getRealPath();
-                $relativePath = substr($filePath, strlen($this->srcPath) + 1); // Remove .../src/
+                $relativePath = substr($filePath, strlen($this->srcPath) + 1);
                 $classPath = str_replace(['/', '.php'], ['\\', ''], $relativePath);
                 $className = "App\\" . $classPath;
 
                 if (class_exists($className)) {
                     try {
                         $reflection = new ReflectionClass($className);
-                        // Check if it's instantiable and has the #[Table] attribute
                         if (!$reflection->isAbstract() && !empty($reflection->getAttributes(Table::class))) {
                             echo "Scanning model: $className\n";
                             $models[] = $className;

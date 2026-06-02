@@ -106,8 +106,18 @@ class SessionManager implements SessionInterface
     private function tableExists(PDO $pdo, string $table): bool
     {
         try {
-            $result = $pdo->query("SHOW TABLES LIKE '$table'");
-            return $result && $result->rowCount() > 0;
+            $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+            $dialect = match ($driver) {
+                'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+                'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
+                'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
+                'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+                default => throw new Exception("Unsupported database driver: $driver"),
+            };
+
+            $sql = $dialect->buildTableExistsQuery($table);
+            $result = $pdo->query($sql);
+            return $result && count($result->fetchAll()) > 0;
         } catch (Exception $e) {
             return false;
         }

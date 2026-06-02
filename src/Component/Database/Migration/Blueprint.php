@@ -226,10 +226,25 @@ class Blueprint
             $fk2Type = self::getPrimaryKeyType($relatedClass);
 
             if (!self::tableExists($db, $pivotTable)) {
-                $sql[$pivotTable] = "CREATE TABLE IF NOT EXISTS `{$pivotTable}` (
-                    `{$foreignPivotKey}` $fk1Type NOT NULL,
-                    `{$relatedPivotKey}` $fk2Type NOT NULL
-                ) ENGINE={$engine} DEFAULT CHARSET={$charset} COLLATE={$collation};";
+                $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+                $dialect = match ($driver) {
+                    'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+                    'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
+                    'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
+                    'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+                    default => throw new \Exception("Unsupported database driver: $driver"),
+                };
+
+                $columns = [
+                    "`{$foreignPivotKey}` $fk1Type NOT NULL",
+                    "`{$relatedPivotKey}` $fk2Type NOT NULL"
+                ];
+
+                $sql[$pivotTable] = $dialect->buildCreateTableQuery($pivotTable, $columns, [
+                    'engine' => $engine,
+                    'charset' => $charset,
+                    'collation' => $collation
+                ]);
             } else {
                 $existingCols = self::getTableColumns($db, $pivotTable);
                 $existingConstraints = self::getTableConstraints($db, $pivotTable);
@@ -412,8 +427,16 @@ class Blueprint
     private static function tableExists(PDO $db, string $table): bool
     {
         try {
-            $result = $db->query("SHOW TABLES LIKE '$table'");
-            return !empty($result->fetchAll());
+            $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+            $dialect = match ($driver) {
+                'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+                'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
+                'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
+                'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+                default => throw new \Exception("Unsupported database driver: $driver"),
+            };
+            $result = $db->query($dialect->buildTableExistsQuery($table));
+            return $result && count($result->fetchAll()) > 0;
         } catch (\Exception $e) {
             return false;
         }
@@ -422,10 +445,21 @@ class Blueprint
     private static function getTableColumns(PDO $db, string $table): array
     {
         try {
-            $stmt = $db->query("DESCRIBE `$table`");
+            $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+            $dialect = match ($driver) {
+                'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+                'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
+                'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
+                'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+                default => throw new \Exception("Unsupported database driver: $driver"),
+            };
+            $stmt = $db->query($dialect->buildShowColumnsQuery($table));
             $columns = [];
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $columns[$row['Field']] = $row['Type'];
+                // SQLite returns 'name' and 'type', MySQL/Postgres returned 'Field' and 'Type' in our alias
+                $field = $row['Field'] ?? $row['name'];
+                $type = $row['Type'] ?? $row['type'];
+                $columns[$field] = $type;
             }
             return $columns;
         } catch (\Exception $e) {
@@ -436,11 +470,22 @@ class Blueprint
     private static function getTableConstraints(PDO $db, string $table): array
     {
         try {
-            $sql = "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
-                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '$table'
-                    AND REFERENCED_TABLE_NAME IS NOT NULL";
-            $stmt = $db->query($sql);
-            return $stmt->fetchAll(PDO::FETCH_COLUMN);
+            $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+            $dialect = match ($driver) {
+                'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+                'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
+                'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
+                'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+                default => throw new \Exception("Unsupported database driver: $driver"),
+            };
+            $stmt = $db->query($dialect->buildShowConstraintsQuery($table));
+            $constraints = [];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                // SQLite returns array of fks, we need name if present, or infer it, SQLite doesn't strictly name them.
+                // For SQLite, let's just return empty string to trigger recreation if mismatch since names aren't strictly returned
+                $constraints[] = $row['CONSTRAINT_NAME'] ?? '';
+            }
+            return $constraints;
         } catch (\Exception $e) {
             return [];
         }

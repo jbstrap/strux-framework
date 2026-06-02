@@ -89,7 +89,6 @@ trait HasSoftDeletes
      */
     public function forceDelete(): bool
     {
-        // Calls the original, permanent delete method from the parent Model class.
         return parent::delete();
     }
 }

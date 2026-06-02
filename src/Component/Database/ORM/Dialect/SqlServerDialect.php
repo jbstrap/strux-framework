@@ -98,8 +98,45 @@ class SqlServerDialect extends SqlDialect
 
     public function buildUpsertQuery(string $table, array $columns, array $update): string
     {
-        // SQL Server uses MERGE
-        $sql = $this->buildInsertQuery($table, $columns, ['']); 
-        return $sql; 
+        $sql = $this->buildInsertQuery($table, $columns, ['']);
+        return $sql;
+    }
+
+    public function buildCreateTableQuery(string $table, array $columns, array $options = []): string
+    {
+        $columnsSql = implode(', ', $columns);
+        
+        // Convert MySQL AUTO_INCREMENT to SQL Server IDENTITY(1,1)
+        $columnsSql = str_ireplace('AUTO_INCREMENT', 'IDENTITY(1,1)', $columnsSql);
+        
+        // Remove UNSIGNED
+        $columnsSql = str_ireplace(' UNSIGNED', '', $columnsSql);
+        
+        $sql = "CREATE TABLE " . $this->quoteTable($table) . " (";
+        $sql .= $columnsSql;
+        $sql .= ");";
+
+        return $sql;
+    }
+
+    public function buildTableExistsQuery(string $table): string
+    {
+        return "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{$table}'";
+    }
+
+    public function buildShowColumnsQuery(string $table): string
+    {
+        return "SELECT COLUMN_NAME AS Field, DATA_TYPE AS Type FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{$table}'";
+    }
+
+    public function buildShowConstraintsQuery(string $table): string
+    {
+        return "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE TABLE_NAME = '{$table}' AND CONSTRAINT_TYPE = 'FOREIGN KEY'";
+    }
+
+    public function dropAllTables(\PDO $db): void
+    {
+        $db->exec('EXEC sp_MSforeachtable "ALTER TABLE ? NOCHECK CONSTRAINT all"');
+        $db->exec('EXEC sp_MSforeachtable "DROP TABLE ?"');
     }
 }

@@ -89,7 +89,13 @@ trait HasAttributes
                     $castedValue = $value;
                     if ($reformat && $reformat->get) {
                         $method = $reformat->get;
-                        $castedValue = $this->{$method}($value);
+                        if (method_exists($this, $method)) {
+                            $castedValue = $this->{$method}($value);
+                        } elseif (is_callable($method)) {
+                            $castedValue = $method($value);
+                        } else {
+                            $castedValue = $this->transformAttributeOnRead($value, $transform ? $transform->type : null, $propertyType);
+                        }
                     } else {
                         $castedValue = $this->transformAttributeOnRead($value, $transform ? $transform->type : null, $propertyType);
                     }
@@ -253,7 +259,16 @@ trait HasAttributes
 
                 if (!empty($reformatAttr) && $reformatAttr[0]->newInstance()->set) {
                     $method = $reformatAttr[0]->newInstance()->set;
-                    $value = $this->{$method}($value);
+                    if (method_exists($this, $method)) {
+                        $value = $this->{$method}($value);
+                    } elseif (is_callable($method)) {
+                        // Support for global functions like password_hash
+                        if ($method === 'password_hash') {
+                            $value = password_hash($value, PASSWORD_BCRYPT);
+                        } else {
+                            $value = $method($value);
+                        }
+                    }
                 } elseif (!empty($transformAttr)) {
                     $value = $this->transformAttributeOnWrite($value, $transformAttr[0]->newInstance()->type);
                 }

@@ -15,14 +15,12 @@ class Database
 {
     protected ?PDO $connection = null;
     protected Config $config;
-    protected ?LoggerInterface $logger; // Make logger available
+    protected ?LoggerInterface $logger;
 
-    // Config can override default PDO options
     private array $defaultPdoOptions = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, // Consistent with your DI
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
-        // PDO::ATTR_PERSISTENT => false, // Generally avoid persistent unless a specific need
     ];
 
     /**
@@ -33,8 +31,6 @@ class Database
         $this->config = $config;
         $this->logger = $logger;
 
-        // Connection is established on first call to getConnection() (lazy loading)
-        // or can be established here if preferred. For simplicity, let's connect here.
         $this->establishConnection();
     }
 
@@ -58,13 +54,12 @@ class Database
 
             $driver = $connectionConfig['driver'] ?? $defaultDriver;
 
-            // Merge global PDO options with connection-specific and default options
             $pdoOptions = array_replace(
                 $this->defaultPdoOptions,
                 $this->config->get('database.global_options', []),
                 $connectionConfig['options'] ?? []
             );
-            // Ensure fetch mode from global etc is prioritized if set
+            
             if ($globalFetch = $this->config->get('database.fetch')) {
                 $pdoOptions[PDO::ATTR_DEFAULT_FETCH_MODE] = $globalFetch;
             }
@@ -73,21 +68,28 @@ class Database
             $username = $connectionConfig['username'] ?? null;
             $password = $connectionConfig['password'] ?? null;
 
-            $this->logger?->info("Attempting to connect to database.", ['driver' => $driver, 'dsn_preview' => preg_replace('/password=[^;]*/i', 'password=***', $dsn)]);
+            $this->logger?->info("Attempting to connect to database.", [
+                'driver' => $driver, 
+                'dsn_preview' => preg_replace('/password=[^;]*/i', 'password=***', $dsn)
+            ]);
 
             $this->connection = new PDO($dsn, $username, $password, $pdoOptions);
 
-            // Driver-specific post-connection setup
             if ($driver === 'sqlite') {
                 if ($connectionConfig['foreign_key_constraints'] ?? false) {
                     $this->connection->exec('PRAGMA foreign_keys = ON;');
                     $this->logger?->info("SQLite: PRAGMA foreign_keys = ON executed.");
                 }
-            } elseif ($driver === 'mysql') {
+            } elseif ($driver === 'mysql' || $driver === 'mariadb') {
                 if (!empty($connectionConfig['charset'])) {
                     $this->connection->exec("SET NAMES '{$connectionConfig['charset']}'" .
                         (!empty($connectionConfig['collation']) ? " COLLATE '{$connectionConfig['collation']}'" : ''));
-                    $this->logger?->info("MySQL: SET NAMES executed.", ['charset' => $connectionConfig['charset'], 'collation' => $connectionConfig['collation'] ?? null]);
+                    $this->logger?->info("MySQL/MariaDB: SET NAMES executed.", ['charset' => $connectionConfig['charset'], 'collation' => $connectionConfig['collation'] ?? null]);
+                }
+            } elseif ($driver === 'pgsql') {
+                if (!empty($connectionConfig['schema'])) {
+                    $this->connection->exec("SET search_path TO '{$connectionConfig['schema']}'");
+                    $this->logger?->info("PostgreSQL: search_path set.", ['schema' => $connectionConfig['schema']]);
                 }
             }
 
@@ -110,8 +112,9 @@ class Database
     {
         switch ($driver) {
             case 'mysql':
+            case 'mariadb':
                 if (empty($config['host']) || empty($config['database'])) {
-                    throw new InvalidArgumentException("MySQL connection requires 'host' and 'database' in etc.");
+                    throw new InvalidArgumentException("MySQL/MariaDB connection requires 'host' and 'database' in etc.");
                 }
                 $dsn = "mysql:host={$config['host']};dbname={$config['database']}";
                 if (!empty($config['port'])) {
@@ -122,15 +125,33 @@ class Database
                 }
                 return $dsn;
 
-            case 'sqlite':
-                $dbPath = $config['path'] ?? null; // Path from etc (e.g., 'var/database/src.db')
+            case 'pgsql':
+                if (empty($config['host']) || empty($config['database'])) {
+                    throw new InvalidArgumentException("PostgreSQL connection requires 'host' and 'database'.");
+                }
+                $dsn = "pgsql:host={$config['host']};dbname={$config['database']}";
+                if (!empty($config['port'])) {
+                    $dsn .= ";port={$config['port']}";
+                }
+                return $dsn;
 
-                // Allow DB_DSN from env to override everything for SQLite for maximum flexibility
+            case 'sqlsrv':
+                if (empty($config['host']) || empty($config['database'])) {
+                    throw new InvalidArgumentException("SQL Server connection requires 'host' and 'database'.");
+                }
+                $dsn = "sqlsrv:Server={$config['host']}";
+                if (!empty($config['port'])) {
+                    $dsn .= ",{$config['port']}";
+                }
+                $dsn .= ";Database={$config['database']}";
+                return $dsn;
+
+            case 'sqlite':
+                $dbPath = $config['path'] ?? null;
                 $dbDsnFromEnv = env('DB_DSN');
                 if ($dbDsnFromEnv && str_starts_with($dbDsnFromEnv, 'sqlite:')) {
                     $this->logger?->info("Using DB_DSN from environment for SQLite.", ['dsn' => $dbDsnFromEnv]);
-                    // Ensure the directory for a DSN path exists if it's a file path
-                    $envPath = substr($dbDsnFromEnv, 7); // Remove "sqlite:"
+                    $envPath = substr($dbDsnFromEnv, 7);
                     if ($envPath !== ':memory:') {
                         $this->ensureDirectoryExists(dirname($envPath));
                     }
@@ -146,7 +167,6 @@ class Database
                     return 'sqlite::memory:';
                 }
 
-                // Resolve a path: if not absolute, assume relative to ROOT_PATH
                 $actualDbPath = (str_starts_with($dbPath, '/') || preg_match('/^[a-zA-Z]:[\\\\\/]/', $dbPath) || defined('PHPUNIT_RUNNING'))
                     ? $dbPath
                     : rtrim(ROOT_PATH, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . ltrim($dbPath, DIRECTORY_SEPARATOR);
@@ -168,7 +188,7 @@ class Database
     {
         if (!is_dir($directory)) {
             $this->logger?->info("Attempting to create directory.", ['directory' => $directory]);
-            if (!mkdir($directory, 0775, true) && !is_dir($directory)) { // true for recursive
+            if (!mkdir($directory, 0775, true) && !is_dir($directory)) {
                 $this->logger?->error("Directory could not be created.", ['directory' => $directory]);
                 throw new DatabaseException("Failed to create directory: {$directory}. Check permissions.");
             }
@@ -183,10 +203,8 @@ class Database
     public function getConnection(): PDO
     {
         if ($this->connection === null) {
-            // This would typically be an error if establishConnection wasn't called in constructor
-            // or if it failed silently. For robustness, we can try to establish it here.
             $this->logger?->warning("PDO connection was null, attempting to re-establish.");
-            $this->establishConnection(); // Or throw an exception if it should always be ready
+            $this->establishConnection();
         }
         return $this->connection;
     }
@@ -201,6 +219,6 @@ class Database
 
     public function __destruct()
     {
-//        $this->closeConnection();
+        // $this->closeConnection();
     }
 }

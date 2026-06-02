@@ -37,7 +37,6 @@ trait HasEvents
             $dispatcher = ContainerBridge::resolve(EventDispatcherInterface::class);
             return $dispatcher->dispatch($event);
         } catch (Throwable $e) {
-            // Event dispatcher not available or error occurred, silently ignore
             return $event;
         }
     }

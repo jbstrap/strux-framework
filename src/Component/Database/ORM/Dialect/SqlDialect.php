@@ -147,4 +147,34 @@ abstract class SqlDialect
     }
 
     abstract public function buildUpsertQuery(string $table, array $columns, array $update): string;
+
+    // --- Schema / DDL Methods ---
+
+    /**
+     * Build a CREATE TABLE query.
+     * @param string $table The table name
+     * @param array $columns An array of column definitions (e.g. ['id INT AUTO_INCREMENT PRIMARY KEY', ...])
+     * @param array $options Dialect specific options like engine, charset, etc.
+     */
+    abstract public function buildCreateTableQuery(string $table, array $columns, array $options = []): string;
+
+    /**
+     * Build a query to check if a table exists.
+     */
+    abstract public function buildTableExistsQuery(string $table): string;
+
+    /**
+     * Build a query to show columns for a table.
+     */
+    abstract public function buildShowColumnsQuery(string $table): string;
+
+    /**
+     * Build a query to show constraints for a table.
+     */
+    abstract public function buildShowConstraintsQuery(string $table): string;
+
+    /**
+     * Drop all tables in the database.
+     */
+    abstract public function dropAllTables(\PDO $db): void;
 }
