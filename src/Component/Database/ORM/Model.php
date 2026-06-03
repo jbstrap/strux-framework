@@ -316,7 +316,9 @@ abstract class Model
     {
         $prepared = [];
         foreach ($attributes as $key => $value) {
-            if (is_scalar($value) || is_null($value)) {
+            if (is_bool($value)) {
+                $prepared[$key] = $value ? 1 : 0;
+            } elseif (is_scalar($value) || is_null($value)) {
                 $prepared[$key] = $value;
             } elseif (is_array($value)) {
                 $prepared[$key] = json_encode($value);
@@ -366,7 +368,9 @@ abstract class Model
     {
         $prepared = [];
         foreach ($attributes as $key => $value) {
-            if (is_scalar($value) || is_null($value)) {
+            if (is_bool($value)) {
+                $prepared[$key] = $value ? 1 : 0;
+            } elseif (is_scalar($value) || is_null($value)) {
                 $prepared[$key] = $value;
             } elseif (is_array($value)) {
                 $prepared[$key] = json_encode($value);
