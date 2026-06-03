@@ -34,7 +34,7 @@ class DatabaseUserProvider implements UserProviderInterface
 
     public function retrieveByCredentials(array $credentials): ?object
     {
-        /* @var Model $modelInstance */
+        /** @var Model $modelInstance */
         $modelInstance = $this->model;
 
         $query = $modelInstance::query();

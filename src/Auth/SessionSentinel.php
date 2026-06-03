@@ -93,17 +93,17 @@ class SessionSentinel implements SentinelInterface
         return true;
     }
 
-    public function attempt(array $credentials = []): bool
+    public function attempt(array $credentials = [], bool $remember = false): bool
     {
         if ($this->validate($credentials)) {
             $user = $this->provider->retrieveByCredentials($credentials);
-            $this->login($user);
+            $this->login($user, $remember);
             return true;
         }
         return false;
     }
 
-    public function login(object $user): void
+    public function login(object $user, bool $remember = false): void
     {
         $id = $this->getUserIdFromObject($user);
 

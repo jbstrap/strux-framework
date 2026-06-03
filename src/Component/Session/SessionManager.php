@@ -10,6 +10,10 @@ use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Strux\Auth\AuthManager;
 use Strux\Component\Config\Config;
+use Strux\Component\Database\ORM\Dialect\MySqlDialect;
+use Strux\Component\Database\ORM\Dialect\PostgresDialect;
+use Strux\Component\Database\ORM\Dialect\SqliteDialect;
+use Strux\Component\Database\ORM\Dialect\SqlServerDialect;
 
 class SessionManager implements SessionInterface
 {
@@ -108,10 +112,10 @@ class SessionManager implements SessionInterface
         try {
             $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
             $dialect = match ($driver) {
-                'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
-                'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
-                'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
-                'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+                'mysql' => new MySqlDialect(),
+                'pgsql' => new PostgresDialect(),
+                'sqlite' => new SqliteDialect(),
+                'sqlsrv' => new SqlServerDialect(),
                 default => throw new Exception("Unsupported database driver: $driver"),
             };
 
@@ -230,7 +234,15 @@ class SessionManager implements SessionInterface
             $_SESSION = [];
             if (ini_get("session.use_cookies")) {
                 $params = session_get_cookie_params();
-                setcookie(session_name(), '', time() - 42000, $params["path"], $params["domain"], $params["secure"], $params["httponly"]);
+                setcookie(
+                    session_name(),
+                    '',
+                    time() - 42000,
+                    $params['path'],
+                    $params['domain'],
+                    $params['secure'],
+                    $params['httponly']
+                );
             }
             session_destroy();
         }

@@ -112,6 +112,9 @@ class SqlServerDialect extends SqlDialect
         // Remove UNSIGNED
         $columnsSql = str_ireplace(' UNSIGNED', '', $columnsSql);
         
+        // Convert TIMESTAMP to DATETIME2
+        $columnsSql = str_ireplace('TIMESTAMP', 'DATETIME2', $columnsSql);
+        
         $sql = "CREATE TABLE " . $this->quoteTable($table) . " (";
         $sql .= $columnsSql;
         $sql .= ");";

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Strux\Auth\Traits;
 
-use App\Domain\Identity\Entity\Permission;
-use App\Domain\Identity\Entity\Role;
+use App\Domain\Identity\Entity\Permissions;
+use App\Domain\Identity\Entity\Roles;
 use InvalidArgumentException;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\NotFoundExceptionInterface;
@@ -68,11 +68,11 @@ trait WillAuthenticate
         }
 
         // Fallback for string-based 'role' column (backward compatibility)
-        if (in_array($this->role, $roles)) {
+        /* if (in_array($this->role, $roles)) {
             return true;
-        }
+        } */
 
-        /** @var Role $role */
+        /** @var Roles $role */
         foreach ($this->roles as $role) {
             if (in_array($role->slug, $roles) || in_array($role->name, $roles)) {
                 return true;
@@ -97,7 +97,7 @@ trait WillAuthenticate
         // We need to make sure each Roles has its permissions loaded.
         // Lazy loading loop (N+1 issue risk, but functional for single user auth check)
 
-        /** @var Role $role */
+        /** @var Roles $role */
         foreach ($this->roles as $role) {
             // Lazy load permissions for this role if not already loaded
             if (!isset($role->permissions) || $role->permissions->isEmpty()) {
@@ -105,7 +105,7 @@ trait WillAuthenticate
                 $role->permissions;
             }
 
-            /** @var Permission $permission */
+            /** @var Permissions $permission */
             foreach ($role->permissions as $permission) {
                 if (in_array($permission->slug, $permissions) || in_array($permission->name, $permissions)) {
                     return true;

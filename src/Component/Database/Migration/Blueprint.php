@@ -215,12 +215,10 @@ class Blueprint
             $relatedPkName = self::getPrimaryKeyName($relatedClass);
 
             $foreignPivotKey = $instance->foreignPivotKey
-                ?? $modelPkName
-                ?? (lcfirst($reflection->getShortName()) . '_id');
+                ?? (strtolower($reflection->getShortName()) . '_id');
 
             $relatedPivotKey = $instance->relatedPivotKey
-                ?? $relatedPkName
-                ?? (lcfirst($relatedReflection->getShortName()) . '_id');
+                ?? (strtolower($relatedReflection->getShortName()) . '_id');
 
             $fk1Type = self::getPrimaryKeyType($modelClass);
             $fk2Type = self::getPrimaryKeyType($relatedClass);
@@ -335,12 +333,10 @@ class Blueprint
             $relatedPkName = self::getPrimaryKeyName($relatedClass);
 
             $foreignPivotKey = $instance->foreignPivotKey
-                ?? $modelPkName
-                ?? (lcfirst($reflection->getShortName()) . '_id');
+                ?? (strtolower($reflection->getShortName()) . '_id');
 
             $relatedPivotKey = $instance->relatedPivotKey
-                ?? $relatedPkName
-                ?? (lcfirst($relatedReflection->getShortName()) . '_id');
+                ?? (strtolower($relatedReflection->getShortName()) . '_id');
 
             $fk1Name = "fk_{$pivotTable}_{$foreignPivotKey}";
             $ownerKey1 = self::getPrimaryKeyName($modelClass) ?? 'id';

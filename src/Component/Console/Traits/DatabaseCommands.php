@@ -33,6 +33,7 @@ trait DatabaseCommands
     private function getMigrationTable(): string
     {
         try {
+            /** @var Config $config */
             $config = $this->container->get(Config::class);
             return $config->get('database.migrations') ?? '_migrations';
         } catch (Exception $e) {
@@ -45,8 +46,8 @@ trait DatabaseCommands
         $table = $this->getMigrationTable();
         $rootPath = defined('ROOT_PATH') ? ROOT_PATH : dirname(__DIR__, 4);
         $migrationDir = ($this->container->has(DirectoryInterface::class) 
-        ? $this->container->get(DirectoryInterface::class)->get('migrations') 
-        : DirectoryResolver::getDefaults($rootPath)['migrations']);
+            ? $this->container->get(DirectoryInterface::class)->get('migrations') 
+            : DirectoryResolver::getDefaults($rootPath)['migrations']);
 
         $driver = $this->getPdo()->getAttribute(PDO::ATTR_DRIVER_NAME);
         $dialect = match ($driver) {
@@ -180,10 +181,14 @@ trait DatabaseCommands
         echo "Reverting Batch $lastBatch...\n";
 
         foreach ($filesToRevert as $migrationName) {
-            $migrationDir = $this->container->has(\Strux\Component\Config\DirectoryInterface::class) ? $this->container->get(\Strux\Component\Config\DirectoryInterface::class)->get('migrations') : \Strux\Component\Config\DirectoryResolver::getDefaults($rootPath)['migrations'];
-            $filePath = $migrationDir . '/' . $migrationName;
+            $migrationDir = $this->container->has(DirectoryInterface::class) 
+                ? $this->container->get(DirectoryInterface::class)->get('migrations') 
+                : DirectoryResolver::getDefaults($rootPath)['migrations'];
+
+            $filePath = "{$migrationDir}/{$migrationName}";
+
             if (file_exists($filePath)) {
-                echo "Reverting: $migrationName\n";
+                echo "Reverting: {$migrationName}\n";
                 $migration = require $filePath;
                 if ($migration instanceof Migration) {
                     $migration->down();
@@ -238,10 +243,14 @@ trait DatabaseCommands
 
         $rootPath = defined('ROOT_PATH') ? ROOT_PATH : dirname(__DIR__, 4);
 
-        $migrationDir = realpath(($this->container->has(\Strux\Component\Config\DirectoryInterface::class) ? $this->container->get(\Strux\Component\Config\DirectoryInterface::class)->get('migrations') : \Strux\Component\Config\DirectoryResolver::getDefaults($rootPath)['migrations']));
+        $migrationDir = realpath((
+            $this->container->has(DirectoryInterface::class) 
+                ? $this->container->get(DirectoryInterface::class)->get('migrations') 
+                : DirectoryResolver::getDefaults($rootPath)['migrations']
+        ));
 
         if ($migrationDir && is_dir($migrationDir)) {
-            $files = glob($migrationDir . '/*.php');
+            $files = glob("{$migrationDir}/*.php");
 
             if ($files) {
                 foreach ($files as $file) {
@@ -281,11 +290,11 @@ trait DatabaseCommands
 
         $driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
         $dialect = match ($driver) {
-            'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
-            'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
-            'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
-            'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
-            default => throw new \Exception("Unsupported database driver: $driver"),
+            'mysql' => new MySqlDialect(),
+            'pgsql' => new PostgresDialect(),
+            'sqlite' => new SqliteDialect(),
+            'sqlsrv' => new SqlServerDialect(),
+            default => throw new Exception("Unsupported database driver: $driver"),
         };
 
         $dialect->dropAllTables($pdo);
@@ -311,9 +320,6 @@ trait DatabaseCommands
             $createdAtCol = $dialect->quote('created_at');
             $idCol = $dialect->quote('id');
             
-            // Limit 1 differs slightly in SQL Server but PDO often supports the generic one.
-            // For proper compatibility, we should rely on standard SQL or dialect limits if needed, 
-            // but we'll use LIMIT 1 or TOP 1 based on dialect if possible. SQL Server uses TOP.
             $sql = "SELECT $migrationCol, $batchCol, $createdAtCol FROM $quotedTable ORDER BY $idCol DESC";
             $sql .= ($driver === 'sqlsrv') ? "" : " LIMIT 1"; 
             if ($driver === 'sqlsrv') {

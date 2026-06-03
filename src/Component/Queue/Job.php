@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Strux\Component\Queue;
 
+/**
+ * Abstract base class for all queue jobs.
+ */
 abstract class Job
 {
-    // You can add properties and methods common to all jobs here,
-    // like tracking attempts, job ID, etc.
+    // TODO: Common properties and methods for jobs can be defined here, such as tracking attempts and job ID.
 }

@@ -9,6 +9,11 @@ use PDOException;
 use Psr\Http\Message\ServerRequestInterface;
 use SessionHandlerInterface;
 use Strux\Auth\AuthManager;
+use Strux\Component\Database\ORM\Dialect\MySqlDialect;
+use Strux\Component\Database\ORM\Dialect\PostgresDialect;
+use Strux\Component\Database\ORM\Dialect\SqlDialect;
+use Strux\Component\Database\ORM\Dialect\SqliteDialect;
+use Strux\Component\Database\ORM\Dialect\SqlServerDialect;
 use Strux\Component\Exceptions\DatabaseException;
 
 class DatabaseSessionHandler implements SessionHandlerInterface
@@ -17,7 +22,7 @@ class DatabaseSessionHandler implements SessionHandlerInterface
     private string $table;
     private AuthManager $auth;
     private ServerRequestInterface $request;
-    private \Strux\Component\Database\ORM\Dialect\SqlDialect $dialect;
+    private SqlDialect $dialect;
 
     public function __construct(PDO $pdo, string $table, AuthManager $auth, ServerRequestInterface $request)
     {
@@ -28,11 +33,11 @@ class DatabaseSessionHandler implements SessionHandlerInterface
 
         $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
         $this->dialect = match ($driver) {
-            'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
-            'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
-            'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
-            'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
-            default => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+            'mysql' => new MySqlDialect(),
+            'pgsql' => new PostgresDialect(),
+            'sqlite' => new SqliteDialect(),
+            'sqlsrv' => new SqlServerDialect(),
+            default => throw new \Exception("Unsupported database driver: $driver")
         };
     }
 
@@ -59,13 +64,9 @@ class DatabaseSessionHandler implements SessionHandlerInterface
             $stmt = $this->db->prepare("SELECT $payloadCol FROM $quotedTable WHERE $idCol = :id");
             $stmt->execute([':id' => $id]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            // Return empty string if no session found (standard behavior)
-            // returning false usually indicates an error to PHP
+            
             return $result['payload'] ?? '';
         } catch (PDOException $e) {
-            // Log error but don't throw to prevent white screen on session start?
-            // Standard practice is to let PHP handle session errors or throw custom.
             throw new DatabaseException("Database Session read error: " . $e->getMessage());
         }
     }
@@ -75,28 +76,21 @@ class DatabaseSessionHandler implements SessionHandlerInterface
      */
     public function write(string $id, string $data): bool
     {
-        // 1. Get User ID safely
-        // We use the 'web' sentinel explicitly as sessions are primarily for web auth.
-        // We suppress errors or check null because Auth might not be fully booted
-        // or user might be guest during early session writes.
         $userId = null;
         try {
             if ($this->auth->sentinel('web')->check()) {
                 $userId = $this->auth->sentinel('web')->id();
             }
         } catch (\Throwable $e) {
-            // Ignore auth errors during session write (e.g. if auth service isn't ready)
         }
 
-        // 2. Get Request Metadata
         $serverParams = $this->request->getServerParams();
         $ipAddress = $serverParams['REMOTE_ADDR'] ?? null;
         $userAgent = $this->request->getHeaderLine('User-Agent');
-        $userAgent = substr($userAgent, 0, 255); // Truncate to fit typical column
+        $userAgent = substr($userAgent, 0, 255);
         $access = time();
 
         try {
-            // 3. Upsert Session
             $quotedTable = $this->dialect->quoteTable($this->table);
             $idCol = $this->dialect->quote('id');
             $userIdCol = $this->dialect->quote('user_id');
@@ -142,7 +136,6 @@ class DatabaseSessionHandler implements SessionHandlerInterface
                         INSERT ($idCol, $userIdCol, $ipCol, $uaCol, $payloadCol, $activityCol)
                         VALUES (:id, :user_id, :ip_address, :user_agent, :payload, :access);";
             } else {
-                // Fallback basic
                 $sql = "INSERT INTO $quotedTable ($idCol, $userIdCol, $ipCol, $uaCol, $payloadCol, $activityCol) 
                      VALUES (:id, :user_id, :ip_address, :user_agent, :payload, :access)";
             }

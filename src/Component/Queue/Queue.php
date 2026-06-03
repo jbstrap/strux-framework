@@ -7,17 +7,32 @@ namespace Strux\Component\Queue;
 use Exception;
 use PDO;
 use Strux\Component\Config\Config;
+use Strux\Component\Database\ORM\Dialect\MySqlDialect;
+use Strux\Component\Database\ORM\Dialect\PostgresDialect;
+use Strux\Component\Database\ORM\Dialect\SqlDialect;
+use Strux\Component\Database\ORM\Dialect\SqliteDialect;
+use Strux\Component\Database\ORM\Dialect\SqlServerDialect;
 use Throwable;
 
 class Queue implements QueueInterface
 {
     private Config $config;
     private PDO $db;
+    private SqlDialect $dialect;
 
     public function __construct(Config $config, PDO $db)
     {
         $this->config = $config;
         $this->db = $db;
+
+        $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $this->dialect = match ($driver) {
+            'mysql' => new MySqlDialect(),
+            'pgsql' => new PostgresDialect(),
+            'sqlite' => new SqliteDialect(),
+            'sqlsrv' => new SqlServerDialect(),
+            default => throw new Exception("Unsupported database driver: $driver")
+        };
     }
 
     protected function getConnectionConfig(): array
@@ -40,8 +55,16 @@ class Queue implements QueueInterface
             ]
         ]);
 
+        $quotedTable = $this->dialect->quoteTable($table);
+        $qCol = $this->dialect->quote('queue');
+        $pCol = $this->dialect->quote('payload');
+        $aCol = $this->dialect->quote('attempts');
+        $rCol = $this->dialect->quote('reserved_at');
+        $avCol = $this->dialect->quote('available_at');
+        $cCol = $this->dialect->quote('created_at');
+
         $stmt = $this->db->prepare(
-            "INSERT INTO $table (queue, payload, attempts, reserved_at, available_at, created_at)
+            "INSERT INTO $quotedTable ($qCol, $pCol, $aCol, $rCol, $avCol, $cCol)
              VALUES (:queue, :payload, 0, null, :available_at, :created_at)"
         );
 
@@ -66,18 +89,51 @@ class Queue implements QueueInterface
             $now = time();
             $retryLimit = $now - $retryAfter;
 
-            $sql = "
-                SELECT * FROM $table
-                WHERE queue = :queue 
-                  AND (
-                      (reserved_at IS NULL AND available_at <= :now) 
-                      OR 
-                      (reserved_at <= :retry_limit)
-                  )
-                ORDER BY id ASC
-                LIMIT 1
-                FOR UPDATE SKIP LOCKED
-            ";
+            $quotedTable = $this->dialect->quoteTable($table);
+            $qCol = $this->dialect->quote('queue');
+            $rCol = $this->dialect->quote('reserved_at');
+            $avCol = $this->dialect->quote('available_at');
+            $idCol = $this->dialect->quote('id');
+
+            $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+            
+            if ($driver === 'sqlsrv') {
+                $sql = "
+                    SELECT TOP 1 * FROM $quotedTable WITH (UPDLOCK, READPAST)
+                    WHERE $qCol = :queue 
+                      AND (
+                          ($rCol IS NULL AND $avCol <= :now) 
+                          OR 
+                          ($rCol <= :retry_limit)
+                      )
+                    ORDER BY $idCol ASC
+                ";
+            } elseif ($driver === 'sqlite') {
+                $sql = "
+                    SELECT * FROM $quotedTable
+                    WHERE $qCol = :queue 
+                      AND (
+                          ($rCol IS NULL AND $avCol <= :now) 
+                          OR 
+                          ($rCol <= :retry_limit)
+                      )
+                    ORDER BY $idCol ASC
+                    LIMIT 1
+                ";
+            } else {
+                $sql = "
+                    SELECT * FROM $quotedTable
+                    WHERE $qCol = :queue 
+                      AND (
+                          ($rCol IS NULL AND $avCol <= :now) 
+                          OR 
+                          ($rCol <= :retry_limit)
+                      )
+                    ORDER BY $idCol ASC
+                    LIMIT 1
+                    FOR UPDATE SKIP LOCKED
+                ";
+            }
 
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
@@ -89,10 +145,11 @@ class Queue implements QueueInterface
             $jobRecord = $stmt->fetch(PDO::FETCH_OBJ);
 
             if ($jobRecord) {
+                $aCol = $this->dialect->quote('attempts');
                 $updateSql = "
-                    UPDATE $table 
-                    SET reserved_at = :now, attempts = attempts + 1 
-                    WHERE id = :id
+                    UPDATE $quotedTable 
+                    SET $rCol = :now, $aCol = $aCol + 1 
+                    WHERE $idCol = :id
                 ";
 
                 $updateStmt = $this->db->prepare($updateSql);
@@ -116,20 +173,24 @@ class Queue implements QueueInterface
 
     public function delete(int|string $id): void
     {
-        $table = $this->getConnectionConfig()['table'] ?? 'jobs';
-        $stmt = $this->db->prepare("DELETE FROM $table WHERE id = :id");
+        $quotedTable = $this->dialect->quoteTable($this->getConnectionConfig()['table'] ?? 'jobs');
+        $idCol = $this->dialect->quote('id');
+        $stmt = $this->db->prepare("DELETE FROM $quotedTable WHERE $idCol = :id");
         $stmt->execute([':id' => $id]);
     }
 
     public function release(int|string $id, int $delaySeconds = 0): void
     {
-        $table = $this->getConnectionConfig()['table'] ?? 'jobs';
+        $quotedTable = $this->dialect->quoteTable($this->getConnectionConfig()['table'] ?? 'jobs');
         $availableAt = time() + $delaySeconds;
+        $rCol = $this->dialect->quote('reserved_at');
+        $avCol = $this->dialect->quote('available_at');
+        $idCol = $this->dialect->quote('id');
 
         $stmt = $this->db->prepare("
-            UPDATE $table 
-            SET reserved_at = NULL, available_at = :available_at 
-            WHERE id = :id
+            UPDATE $quotedTable 
+            SET $rCol = NULL, $avCol = :available_at 
+            WHERE $idCol = :id
         ");
 
         $stmt->execute([
@@ -144,8 +205,15 @@ class Queue implements QueueInterface
         $failedTable = $failedConfig['table'] ?? 'failed_jobs';
 
         try {
+            $quotedFailedTable = $this->dialect->quoteTable($failedTable);
+            $connCol = $this->dialect->quote('connection');
+            $qCol = $this->dialect->quote('queue');
+            $pCol = $this->dialect->quote('payload');
+            $excCol = $this->dialect->quote('exception');
+            $fCol = $this->dialect->quote('failed_at');
+
             $stmt = $this->db->prepare(
-                "INSERT INTO {$failedTable} (connection, queue, payload, exception, failed_at) 
+                "INSERT INTO $quotedFailedTable ($connCol, $qCol, $pCol, $excCol, $fCol) 
                  VALUES (:connection, :queue, :payload, :exception, :failed_at)"
             );
 
@@ -154,7 +222,7 @@ class Queue implements QueueInterface
                 ':queue' => $jobRecord->queue,
                 ':payload' => $jobRecord->payload,
                 ':exception' => (string)$exception,
-                ':failed_at' => date('Y-m-d H:i:s'),
+                ':failed_at' => date('Y-m-d H:i:s')
             ]);
         } catch (Exception $e) {
             error_log("Could not write to failed_jobs table: " . $e->getMessage());

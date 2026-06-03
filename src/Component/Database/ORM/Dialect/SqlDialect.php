@@ -130,7 +130,7 @@ abstract class SqlDialect
     {
         $columnsStr = implode(', ', array_map([$this, 'quote'], $columns));
         $placeholdersStr = implode(', ', $values);
-        return "INSERT INTO " . $this->quoteTable($table) . " ($columnsStr) VALUES $placeholdersStr";
+        return "INSERT INTO " . $this->quoteTable($table) . " ($columnsStr) VALUES ($placeholdersStr)";
     }
 
     public function buildUpdateQuery(string $table, array $columns): string

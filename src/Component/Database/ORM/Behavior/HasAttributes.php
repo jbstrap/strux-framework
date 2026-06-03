@@ -47,12 +47,13 @@ trait HasAttributes
                     $propName = $prop->getName();
 
                     $colAttr = $prop->getAttributes(Column::class);
+                    if (empty($colAttr)) {
+                        continue;
+                    }
                     $dbName = $propName;
-                    if (!empty($colAttr)) {
-                        $colInstance = $colAttr[0]->newInstance();
-                        if ($colInstance->name) {
-                            $dbName = $colInstance->name;
-                        }
+                    $colInstance = $colAttr[0]->newInstance();
+                    if ($colInstance->name) {
+                        $dbName = $colInstance->name;
                     }
 
                     $transformAttr = $prop->getAttributes(Transform::class);
@@ -244,13 +245,15 @@ trait HasAttributes
             }
 
             if (!$prop->isStatic() && !$prop->isProtected() && $prop->isInitialized($this)) {
-                $dbName = $prop->getName();
                 $colAttr = $prop->getAttributes(Column::class);
-                if (!empty($colAttr)) {
-                    $colInstance = $colAttr[0]->newInstance();
-                    if ($colInstance->name) {
-                        $dbName = $colInstance->name;
-                    }
+                if (empty($colAttr)) {
+                    continue;
+                }
+                
+                $dbName = $prop->getName();
+                $colInstance = $colAttr[0]->newInstance();
+                if ($colInstance->name) {
+                    $dbName = $colInstance->name;
                 }
                 $value = $this->{$prop->getName()};
                 

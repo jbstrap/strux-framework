@@ -22,9 +22,9 @@ class Auth
      * Attempt to authenticate using credentials.
      * Use this in your Login Controller.
      */
-    public static function attempt(array $credentials): bool
+    public static function attempt(array $credentials, bool $remember = false): bool
     {
-        return self::sentinel('web')->attempt($credentials);
+        return self::sentinel('web')->attempt($credentials, $remember);
     }
 
     /**
@@ -39,9 +39,9 @@ class Auth
      * Manually log in a specific user object.
      * Useful after registration (auto-login).
      */
-    public static function login(object $user): void
+    public static function login(object $user, bool $remember = false): void
     {
-        self::sentinel('web')->login($user);
+        self::sentinel('web')->login($user, $remember);
     }
 
     public static function logout(): void
