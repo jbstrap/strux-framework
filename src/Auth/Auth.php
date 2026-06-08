@@ -13,7 +13,7 @@ class Auth
         return ContainerBridge::resolve(AuthManager::class);
     }
 
-    public static function sentinel(string $name = null): SentinelInterface
+    public static function sentinel(?string $name = null): SentinelInterface
     {
         return self::getAuthManager()->sentinel($name);
     }

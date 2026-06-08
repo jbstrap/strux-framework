@@ -7,7 +7,6 @@ namespace Strux\Component\Database\ORM\Relations;
 use InvalidArgumentException;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\NotFoundExceptionInterface;
-use Strux\Component\Exceptions\Container\ContainerException;
 use Strux\Component\Database\ORM\Model;
 use Strux\Support\Collection;
 use Strux\Support\ContainerBridge;
@@ -28,8 +27,7 @@ class OwnedByMany extends Relation
         string $relatedPivotKey,
         string $parentKey,
         string $relatedKey
-    )
-    {
+    ) {
         $this->pivotTable = $pivotTable;
         $this->foreignPivotKey = $foreignPivotKey;
         $this->relatedPivotKey = $relatedPivotKey;
@@ -88,7 +86,7 @@ class OwnedByMany extends Relation
 
         try {
             $db = ContainerBridge::resolve(\PDO::class);
-        } catch (NotFoundExceptionInterface|ContainerExceptionInterface $e) {
+        } catch (NotFoundExceptionInterface | ContainerExceptionInterface $e) {
             $db = container()->get(\PDO::class);
         }
 
@@ -124,13 +122,13 @@ class OwnedByMany extends Relation
      * Detach related models.
      * * @param int|array|Model|null $ids If null, detach all.
      */
-    public function detach(int|Model|array $ids = null): void
+    public function detach(int|Model|array|null $ids = null): void
     {
         $parentKey = $this->parent->{$this->parent->getPrimaryKey()};
 
         try {
             $db = ContainerBridge::resolve(\PDO::class);
-        } catch (NotFoundExceptionInterface|ContainerExceptionInterface $e) {
+        } catch (NotFoundExceptionInterface | ContainerExceptionInterface $e) {
             $db = container()->get(\PDO::class);
         }
 

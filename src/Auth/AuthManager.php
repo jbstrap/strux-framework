@@ -16,11 +16,9 @@ class AuthManager
     public function __construct(
         protected ContainerInterface $container,
         protected ?Config            $config = null
-    )
-    {
-    }
+    ) {}
 
-    public function sentinel(string $name = null): SentinelInterface
+    public function sentinel(?string $name = null): SentinelInterface
     {
         $name = $name ?: $this->getDefaultSentinelName();
 

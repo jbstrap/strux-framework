@@ -41,7 +41,7 @@ class Router
     private const WILDCARD_SEGMENT_CAPTURE_REGEX = '.+';
 
     private const SEGMENT_PLACEHOLDER_CORE_PATTERN =
-        '/^(?:' .
+    '/^(?:' .
         '(?P<wildcard_def>\*\:(?P<wildcard_name>[a-zA-Z_][a-zA-Z0-9_-]+))' . // *:name
         '|' .
         '(?P<typed_def>(?P<type>[a-zA-Z]+)\:(?P<typed_param_name>[a-zA-Z_][a-zA-Z0-9_-]+))' . // type:name
@@ -484,8 +484,7 @@ class Router
         $url = $uriPattern;
         $usedParams = [];
 
-        // Find the route definition to get param_definitions for accurate replacement
-        $routeDefinitionForGeneration = null;
+        // Find the route definition to get param_definitions for accurate replacement $routeDefinitionForGeneration = null;
         foreach ($this->routes as $r) {
             if (($r['name'] ?? null) === $name && $r['uri_pattern'] === $uriPattern && $r['method'] === $method) {
                 $routeDefinitionForGeneration = $r;

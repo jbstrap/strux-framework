@@ -30,8 +30,7 @@ class Cache implements CacheInterface
         Config                    $config,
         ?LoggerInterface          $logger = null,
         ?EventDispatcherInterface $events = null
-    )
-    {
+    ) {
         $this->config = $config;
         $this->logger = $logger;
         $this->events = $events;

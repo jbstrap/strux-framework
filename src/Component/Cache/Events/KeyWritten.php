@@ -13,7 +13,5 @@ class KeyWritten
         public mixed                 $value,
         public null|int|DateInterval $ttl = null,
         public array                 $tags = []
-    )
-    {
-    }
+    ) {}
 }

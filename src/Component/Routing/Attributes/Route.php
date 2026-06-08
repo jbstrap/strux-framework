@@ -30,7 +30,7 @@ class Route
     public ?string $toPath = null;    // Redirect to a specific path
     public ?string $toRoute = null;   // Redirect to a named route
     /** @var string|array|null */
-    public $toAction = null; // Redirect to a controller action [Controller::class, 'method'] or 'Controller::method'
+    public string|array|null $toAction = null; // Redirect to a controller action [Controller::class, 'method'] or 'Controller::method'
     /** @var array<int, class-string|object> */
     public array $middleware;
 
@@ -55,8 +55,7 @@ class Route
         ?string           $toRoute = null,
         string|array|null $toAction = null,
         array             $middleware = []
-    )
-    {
+    ) {
         $this->path = $path;
         $this->methods = array_map('strtoupper', (array)$methods); // Ensure an array and uppercase
         $this->name = $name;
