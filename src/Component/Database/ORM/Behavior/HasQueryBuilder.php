@@ -41,6 +41,8 @@ trait HasQueryBuilder
     private ?SqlDialect $_dialect = null;
     private ?int $_stashFor = null;
     private ?string $_stashKey = null;
+    private array $_with = [];
+    private array $_includes = [];
 
     public function getDialect(): SqlDialect
     {

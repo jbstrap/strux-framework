@@ -390,7 +390,7 @@ abstract class Model
         $attributesToSave = $prepared;
         $pkName = $this->getPrimaryKey();
 
-        if (array_key_exists($pkName, $attributesToSave) && $attributesToSave[$pkName] === null) {
+        if (array_key_exists($pkName, $attributesToSave) && ($attributesToSave[$pkName] === null || $attributesToSave[$pkName] === '')) {
             $pkProperty = $this->reflection()->getProperty($pkName);
             $idAttr = ($pkProperty->getAttributes(Id::class)[0] ?? null)?->newInstance();
 

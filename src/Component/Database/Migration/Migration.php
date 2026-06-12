@@ -47,13 +47,33 @@ abstract class Migration
             return;
         }
 
+        $driver = $this->db->getAttribute(\PDO::ATTR_DRIVER_NAME);
+        $isPgsql = $driver === 'pgsql';
+
         // Disable foreign key checks to allow modifications to constrained columns
-        $this->db->exec('SET FOREIGN_KEY_CHECKS=0;');
+        if (!$isPgsql) {
+            $this->db->exec('SET FOREIGN_KEY_CHECKS=0;');
+        }
 
         foreach ($queries as $query) {
             // Skip comments
             if (str_starts_with(trim($query), '--')) {
                 continue;
+            }
+
+            if ($isPgsql) {
+                // Translate MySQL backticks to standard double quotes
+                $query = str_replace('`', '"', $query);
+                // Postgres does not support ON UPDATE CURRENT_TIMESTAMP implicitly
+                $query = str_ireplace(' ON UPDATE CURRENT_TIMESTAMP', '', $query);
+                // Postgres uses just SERIAL, not INTEGER SERIAL
+                $query = str_ireplace('INTEGER SERIAL', 'SERIAL', $query);
+                $query = str_ireplace('INT SERIAL', 'SERIAL', $query);
+                // Postgres expects boolean literals for boolean defaults
+                $query = str_ireplace('BOOLEAN NULL DEFAULT 0', 'BOOLEAN NULL DEFAULT FALSE', $query);
+                $query = str_ireplace('BOOLEAN NOT NULL DEFAULT 0', 'BOOLEAN NOT NULL DEFAULT FALSE', $query);
+                $query = str_ireplace('BOOLEAN NULL DEFAULT 1', 'BOOLEAN NULL DEFAULT TRUE', $query);
+                $query = str_ireplace('BOOLEAN NOT NULL DEFAULT 1', 'BOOLEAN NOT NULL DEFAULT TRUE', $query);
             }
 
             echo "\033[32mExecuting:\033[0m $query" . PHP_EOL;
@@ -62,12 +82,16 @@ abstract class Migration
                 $this->db->exec($query);
             } catch (Throwable $e) {
                 // Ensure we re-enable checks even if a query fails
-                $this->db->exec('SET FOREIGN_KEY_CHECKS=1;');
+                if (!$isPgsql) {
+                    $this->db->exec('SET FOREIGN_KEY_CHECKS=1;');
+                }
                 throw $e;
             }
         }
 
         // Re-enable foreign key checks
-        $this->db->exec('SET FOREIGN_KEY_CHECKS=1;');
+        if (!$isPgsql) {
+            $this->db->exec('SET FOREIGN_KEY_CHECKS=1;');
+        }
     }
 }
