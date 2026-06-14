@@ -174,7 +174,7 @@ class Blueprint
         $currentTable = $tableAttribute->newInstance()->table;
         $sql = [];
 
-        $engine = $dbConfig['engine'] ?: 'InnoDB';
+        $engine = $dbConfig['engine'] ?? 'InnoDB';
         $charset = $dbConfig['charset'] ?? 'utf8mb4';
         $collation = $dbConfig['collation'] ?? 'utf8mb4_unicode_ci';
 
@@ -506,12 +506,16 @@ class Blueprint
             $columns = [];
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 // SQLite returns 'name' and 'type', MySQL/Postgres returned 'Field' and 'Type' in our alias
-                $field = $row['Field'] ?? $row['name'];
-                $type = $row['Type'] ?? $row['type'];
-                $columns[$field] = $type;
+                $field = $row['Field'] ?? $row['field'] ?? $row['name'] ?? null;
+                $type = $row['Type'] ?? $row['type'] ?? null;
+                
+                if ($field !== null) {
+                    $columns[$field] = $type;
+                }
             }
             return $columns;
         } catch (\Exception $e) {
+            echo "Error in getTableColumns: " . $e->getMessage() . "\n";
             return [];
         }
     }

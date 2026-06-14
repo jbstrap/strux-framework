@@ -27,7 +27,7 @@ readonly class RedirectIfAuthenticated implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         // Check if user is authenticated
-        if ($this->auth->sentinel('web')->check()) {
+        if ($this->auth->sentinel('web')->isAuthenticated()) {
 
             // 1. Check Query Params (e.g. GET /login?next=/profile)
             $queryParams = $request->getQueryParams();

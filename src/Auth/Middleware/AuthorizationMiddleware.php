@@ -62,7 +62,7 @@ class AuthorizationMiddleware implements MiddlewareInterface
         ServerRequestInterface $request,
         RequestHandlerInterface $handler
     ): ResponseInterface {
-        if ($this->authManager->sentinel('web')->check()) {
+        if ($this->authManager->sentinel('web')->isAuthenticated()) {
             $userId = $this->authManager->sentinel('web')->id();
             $this->logger?->info("[AuthManagerMiddleware] User with ID {$userId} is authenticated. Proceeding.");
             $routeInfo = $request->getAttribute('route');

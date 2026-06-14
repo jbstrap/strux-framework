@@ -78,7 +78,7 @@ class DatabaseSessionHandler implements SessionHandlerInterface
     {
         $userId = null;
         try {
-            if ($this->auth->sentinel('web')->check()) {
+            if ($this->auth->sentinel('web')->isAuthenticated()) {
                 $userId = $this->auth->sentinel('web')->id();
             }
         } catch (\Throwable $e) {

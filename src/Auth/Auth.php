@@ -22,9 +22,9 @@ class Auth
      * Attempt to authenticate using credentials.
      * Use this in your Login Controller.
      */
-    public static function attempt(array $credentials, bool $remember = false): bool
+    public static function authenticate(array|object $credentials, bool $remember = false): bool
     {
-        return self::sentinel('web')->attempt($credentials, $remember);
+        return self::sentinel('web')->authenticate($credentials, $remember);
     }
 
     /**
@@ -54,9 +54,9 @@ class Auth
         return self::sentinel('web')->user();
     }
 
-    public static function check(): bool
+    public static function isAuthenticated(): bool
     {
-        return self::sentinel('web')->check();
+        return self::sentinel('web')->isAuthenticated();
     }
 
     public static function id(): int|string|null

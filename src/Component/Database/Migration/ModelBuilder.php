@@ -262,6 +262,13 @@ class ModelBuilder
             $cleanCurrent = preg_replace('/\(.*?\)/', '', strtolower($currentType));
             $cleanSql = preg_replace('/\(.*?\)/', '', strtolower($sqlType));
 
+            // Postgres aliases
+            if ($cleanCurrent === 'character varying') $cleanCurrent = 'varchar';
+            if ($cleanCurrent === 'timestamp without time zone') $cleanCurrent = 'timestamp';
+            if ($cleanCurrent === 'timestamp with time zone') $cleanCurrent = 'timestamp';
+            if ($cleanCurrent === 'integer') $cleanCurrent = 'int';
+            if ($cleanCurrent === 'boolean') $cleanCurrent = 'tinyint';
+
             // Handle unsigned difference
             $cleanCurrent = trim(str_replace('unsigned', '', $cleanCurrent));
             $cleanSqlBase = trim(str_replace('unsigned', '', $cleanSql));
@@ -321,17 +328,19 @@ class ModelBuilder
             $stmt = $this->db->query($dialect->buildShowColumnsQuery($tableName));
             $columns = [];
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $field = $row['Field'] ?? $row['name'] ?? null;
+                $field = $row['Field'] ?? $row['field'] ?? $row['name'] ?? null;
                 $type = $row['Type'] ?? $row['type'] ?? null;
                 $nullable = $row['Null'] ?? ((isset($row['notnull']) && $row['notnull']) ? 'NO' : 'YES');
                 $default = $row['Default'] ?? $row['dflt_value'] ?? null;
 
-                $columns[$field] = [
-                    'type' => $type,
-                    'nullable' => $nullable,
-                    'default' => $default,
-                    'extra' => $row['Extra'] ?? '',
-                ];
+                if ($field !== null) {
+                    $columns[$field] = [
+                        'type' => $type,
+                        'nullable' => $nullable,
+                        'default' => $default,
+                        'extra' => $row['Extra'] ?? '',
+                    ];
+                }
             }
             return $columns;
         } catch (\Exception $e) {

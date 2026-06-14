@@ -450,7 +450,13 @@ abstract class Model
         $sql = $grammar->buildInsertQuery($this->getTable(), $columns, $placeholders);
         $this->_execute($sql, $bindings);
 
-        $id = $this->db->lastInsertId();
+        $id = null;
+        try {
+            $id = $this->db->lastInsertId();
+        } catch (\PDOException $e) {
+            // Postgres throws 'lastval is not yet defined' if no sequence was advanced.
+        }
+
         if ($id && property_exists($this, $this->getPrimaryKey())) {
             if (!isset($attributesToSave[$this->getPrimaryKey()]) || $attributesToSave[$this->getPrimaryKey()] === null) {
                 $this->{$this->getPrimaryKey()} = is_numeric($id) ? (int) $id : $id;

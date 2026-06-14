@@ -32,7 +32,7 @@ class ApiAuthMiddleware implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         // Use the AuthManager to get the 'api' sentinel and check the user
-        if ($this->authManager->sentinel('api')->check()) {
+        if ($this->authManager->sentinel('api')->isAuthenticated()) {
             // User is authenticated via token, proceed with the request.
             $userId = $this->authManager->sentinel('web')->id();
             $this->logger?->info("[APIAuthManagerMiddleware] User with ID {$userId} is authenticated. Proceeding.");

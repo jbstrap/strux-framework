@@ -66,6 +66,12 @@ abstract class Migration
                 $query = str_replace('`', '"', $query);
                 // Postgres does not support ON UPDATE CURRENT_TIMESTAMP implicitly
                 $query = str_ireplace(' ON UPDATE CURRENT_TIMESTAMP', '', $query);
+                
+                // Translate AUTO_INCREMENT to SERIAL
+                $query = str_ireplace('INTEGER AUTO_INCREMENT', 'SERIAL', $query);
+                $query = str_ireplace('INT AUTO_INCREMENT', 'SERIAL', $query);
+                $query = str_ireplace(' AUTO_INCREMENT', '', $query);
+                
                 // Postgres uses just SERIAL, not INTEGER SERIAL
                 $query = str_ireplace('INTEGER SERIAL', 'SERIAL', $query);
                 $query = str_ireplace('INT SERIAL', 'SERIAL', $query);

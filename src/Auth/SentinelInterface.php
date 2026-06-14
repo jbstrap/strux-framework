@@ -6,19 +6,19 @@ namespace Strux\Auth;
 
 interface SentinelInterface
 {
-    public function attempt(array $credentials = [], bool $remember = false): bool;
+	public function authenticate(array|object $credentials = [], bool $remember = false): bool;
 
-    public function validate(array $credentials = []): bool;
+	public function validate(array $credentials = []): bool;
 
-    public function login(object $user, bool $remember = false): void;
+	public function login(object $user, bool $remember = false): void;
 
-    public function logout(): void;
+	public function logout(): void;
 
-    public function check(): bool;
+	public function isAuthenticated(): bool;
 
-    public function user(): ?object;
+	public function user(): ?object;
 
-    public function id(): int|string|null;
+	public function id(): int|string|null;
 
-    public function setUser(object $user): void;
+	public function setUser(object $user): void;
 }
