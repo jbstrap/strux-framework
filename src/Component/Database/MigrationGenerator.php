@@ -169,30 +169,51 @@ class MigrationGenerator
     private function scanModels(): array
     {
         $models = [];
-        $path = $this->srcPath . '/Domain';
+        $mappedTables = [];
+        
+        $pathsToScan = [
+            $this->srcPath . '/Domain' => 'App\\Domain',
+            dirname(__DIR__, 2) . '/Auth/Entity' => 'Strux\\Auth\\Entity',
+        ];
 
-        if (!is_dir($path)) {
-            return [];
-        }
+        foreach ($pathsToScan as $path => $baseNamespace) {
+            if (!is_dir($path)) {
+                continue;
+            }
 
-        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path));
+            $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path));
 
-        foreach ($iterator as $file) {
-            if ($file->isFile() && $file->getExtension() === 'php') {
-                $filePath = $file->getRealPath();
-                $relativePath = substr($filePath, strlen($this->srcPath) + 1);
-                $classPath = str_replace(['/', '.php'], ['\\', ''], $relativePath);
-                $className = "App\\" . $classPath;
+            foreach ($iterator as $file) {
+                if ($file->isFile() && $file->getExtension() === 'php') {
+                    $filePath = $file->getRealPath();
+                    
+                    if ($baseNamespace === 'App\\Domain') {
+                        $relativePath = substr($filePath, strlen($this->srcPath) + 1);
+                        $classPath = str_replace(['/', '.php'], ['\\', ''], $relativePath);
+                        $className = "App\\" . $classPath;
+                    } else {
+                        $relativePath = substr($filePath, strlen($path) + 1);
+                        $classPath = str_replace(['/', '.php'], ['\\', ''], $relativePath);
+                        $className = $baseNamespace . "\\" . $classPath;
+                    }
 
-                if (class_exists($className)) {
-                    try {
-                        $reflection = new ReflectionClass($className);
-                        if (!$reflection->isAbstract() && !empty($reflection->getAttributes(Entity::class))) {
-                            echo "Scanning model: $className\n";
-                            $models[] = $className;
+                    if (class_exists($className)) {
+                        try {
+                            $reflection = new ReflectionClass($className);
+                            $attributes = $reflection->getAttributes(Entity::class);
+                            if (!$reflection->isAbstract() && !empty($attributes)) {
+                                $entityAttribute = $attributes[0]->newInstance();
+                                $tableName = $entityAttribute->table;
+                                
+                                if (!in_array($tableName, $mappedTables, true)) {
+                                    echo "Scanning model: $className\n";
+                                    $models[] = $className;
+                                    $mappedTables[] = $tableName;
+                                }
+                            }
+                        } catch (ReflectionException $e) {
+                            continue;
                         }
-                    } catch (ReflectionException $e) {
-                        continue;
                     }
                 }
             }

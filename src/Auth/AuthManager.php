@@ -80,4 +80,29 @@ class AuthManager
     {
         return !$this->can($ability, $arguments);
     }
+
+    /**
+     * Resolves the appropriate redirect URL for a given authenticated user
+     * based on their roles and the configured redirect_map.
+     */
+    public function resolveRedirectFor(mixed $user): string
+    {
+        if (!$this->config) {
+            return '/';
+        }
+        
+        $redirectMap = $this->config->get('auth.defaults.redirect_map', []);
+        $defaultRedirect = $this->config->get('auth.defaults.redirect_to', '/');
+        
+        if (property_exists($user, 'roles')) {
+            foreach ($user->roles as $role) {
+                $slug = is_string($role) ? $role : (property_exists($role, 'slug') ? $role->slug : null);
+                if ($slug && isset($redirectMap[$slug])) {
+                    return $redirectMap[$slug];
+                }
+            }
+        }
+        
+        return $defaultRedirect;
+    }
 }

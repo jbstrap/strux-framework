@@ -100,7 +100,9 @@ trait HasAttributes
 
                 try {
                     $castedValue = $value;
-                    if ($reformat && $reformat->get) {
+                    if ($value === null) {
+                        $castedValue = null;
+                    } elseif ($reformat && $reformat->get) {
                         $method = $reformat->get;
                         if (method_exists($this, $method)) {
                             $castedValue = $this->{$method}($value);
