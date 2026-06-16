@@ -177,6 +177,14 @@ abstract class SqlDialect
     abstract public function buildShowConstraintsQuery(string $table): string;
 
     /**
+     * Build a query to show indexes for a table.
+     */
+    public function buildShowIndexesQuery(string $table): string
+    {
+        return "SHOW INDEX FROM " . $this->quoteTable($table);
+    }
+
+    /**
      * Drop all tables in the database.
      */
     abstract public function dropAllTables(\PDO $db): void;
@@ -195,6 +203,21 @@ abstract class SqlDialect
      * Build a DROP INDEX query.
      */
     abstract public function buildDropIndexQuery(string $table, string $indexName): string;
+
+    public function buildAddColumnQuery(string $table, string $definition): string
+    {
+        return "ALTER TABLE " . $this->quoteTable($table) . " ADD COLUMN {$definition};";
+    }
+
+    public function buildRenameColumnQuery(string $table, string $oldName, string $newName): string
+    {
+        return "ALTER TABLE " . $this->quoteTable($table) . " RENAME COLUMN " . $this->quote($oldName) . " TO " . $this->quote($newName) . ";";
+    }
+
+    public function buildModifyColumnQuery(string $table, string $definition): string
+    {
+        return "ALTER TABLE " . $this->quoteTable($table) . " MODIFY COLUMN {$definition};";
+    }
 
     /**
      * Translate generic framework types to dialect-specific types.

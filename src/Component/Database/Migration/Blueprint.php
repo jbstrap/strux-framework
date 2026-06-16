@@ -268,6 +268,15 @@ class Blueprint
                     'collation' => $collation
                 ]);
             } else {
+                $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+                $dialect = match ($driver) {
+                    'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+                    'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
+                    'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
+                    'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+                    default => throw new \Exception("Unsupported database driver: $driver"),
+                };
+
                 $existingCols = self::getTableColumns($db, $pivotTable);
                 $existingConstraints = self::getTableConstraints($db, $pivotTable);
 
@@ -277,7 +286,7 @@ class Blueprint
                         if (in_array($constraintName, $existingConstraints)) {
                             $sql["{$pivotTable}_drop_fk1"] = "ALTER TABLE `{$pivotTable}` DROP FOREIGN KEY `{$constraintName}`;";
                         }
-                        $sql["{$pivotTable}_mod1"] = "ALTER TABLE `{$pivotTable}` MODIFY COLUMN `{$foreignPivotKey}` $fk1Type NOT NULL;";
+                        $sql["{$pivotTable}_mod1"] = $dialect->buildModifyColumnQuery($pivotTable, "`{$foreignPivotKey}` $fk1Type NOT NULL");
                     }
                 }
 
@@ -287,7 +296,7 @@ class Blueprint
                         if (in_array($constraintName, $existingConstraints)) {
                             $sql["{$pivotTable}_drop_fk2"] = "ALTER TABLE `{$pivotTable}` DROP FOREIGN KEY `{$constraintName}`;";
                         }
-                        $sql["{$pivotTable}_mod2"] = "ALTER TABLE `{$pivotTable}` MODIFY COLUMN `{$relatedPivotKey}` $fk2Type NOT NULL;";
+                        $sql["{$pivotTable}_mod2"] = $dialect->buildModifyColumnQuery($pivotTable, "`{$relatedPivotKey}` $fk2Type NOT NULL");
                     }
                 }
             }
@@ -536,7 +545,7 @@ class Blueprint
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 // SQLite returns array of fks, we need name if present, or infer it, SQLite doesn't strictly name them.
                 // For SQLite, let's just return empty string to trigger recreation if mismatch since names aren't strictly returned
-                $constraints[] = $row['CONSTRAINT_NAME'] ?? '';
+                $constraints[] = $row['CONSTRAINT_NAME'] ?? $row['constraint_name'] ?? '';
             }
             return $constraints;
         } catch (\Exception $e) {

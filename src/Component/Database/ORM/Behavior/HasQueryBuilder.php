@@ -97,6 +97,7 @@ trait HasQueryBuilder
                 'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
                 'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
                 'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+                'oci', 'oracle' => new \Strux\Component\Database\ORM\Dialect\OracleDialect(),
                 default => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
             };
         }

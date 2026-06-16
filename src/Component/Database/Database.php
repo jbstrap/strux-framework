@@ -161,6 +161,18 @@ class Database
                 $dsn .= ";Database={$config['database']}";
                 return $dsn;
 
+            case 'oci':
+            case 'oracle':
+                if (empty($config['host']) || empty($config['database'])) {
+                    throw new InvalidArgumentException("Oracle connection requires 'host' and 'database'.");
+                }
+                $port = $config['port'] ?? 1521;
+                $dsn = "oci:dbname=//{$config['host']}:{$port}/{$config['database']}";
+                if (!empty($config['charset'])) {
+                    $dsn .= ";charset={$config['charset']}";
+                }
+                return $dsn;
+
             case 'sqlite':
                 $dbPath = $config['path'] ?? null;
                 $dbDsnFromEnv = env('DB_DSN');

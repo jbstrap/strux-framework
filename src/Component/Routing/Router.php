@@ -484,7 +484,9 @@ class Router
         $url = $uriPattern;
         $usedParams = [];
 
-        // Find the route definition to get param_definitions for accurate replacement $routeDefinitionForGeneration = null;
+        // Find the route definition to get param_definitions for accurate replacement 
+
+        $routeDefinitionForGeneration = null;
         foreach ($this->routes as $r) {
             if (($r['name'] ?? null) === $name && $r['uri_pattern'] === $uriPattern && $r['method'] === $method) {
                 $routeDefinitionForGeneration = $r;

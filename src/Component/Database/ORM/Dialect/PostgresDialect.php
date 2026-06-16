@@ -70,6 +70,11 @@ class PostgresDialect extends SqlDialect
                 WHERE tc.table_name = '{$table}' AND tc.constraint_type = 'FOREIGN KEY'";
     }
 
+    public function buildShowIndexesQuery(string $table): string
+    {
+        return "SELECT indexname AS \"Key_name\" FROM pg_indexes WHERE tablename = '{$table}'";
+    }
+
     public function dropAllTables(\PDO $db): void
     {
         $db->exec('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
@@ -80,6 +85,13 @@ class PostgresDialect extends SqlDialect
     public function buildDropIndexQuery(string $table, string $indexName): string
     {
         return "DROP INDEX {$this->quote($indexName)}";
+    }
+
+    public function buildModifyColumnQuery(string $table, string $definition): string
+    {
+        // Postgres uses ALTER TABLE table_name ALTER COLUMN column_name TYPE new_type
+        // which requires complex parsing. Returning a comment to prevent syntax errors.
+        return "-- ALTER TABLE " . $this->quoteTable($table) . " MODIFY COLUMN {$definition} (Skipped by Postgres dialect)";
     }
 
     public function translateType(string $type): string

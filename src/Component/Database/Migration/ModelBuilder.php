@@ -44,6 +44,18 @@ class ModelBuilder
         }
     }
 
+    private function getDialect(): \Strux\Component\Database\ORM\Dialect\SqlDialect
+    {
+        $driver = $this->db ? $this->db->getAttribute(PDO::ATTR_DRIVER_NAME) : 'mysql';
+        return match ($driver) {
+            'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+            'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
+            'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
+            'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+            default => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+        };
+    }
+
     private function createTableSql(string $tableName, ReflectionClass $reflection): array
     {
         $columns = [];
@@ -138,17 +150,17 @@ class ModelBuilder
             $definition = $this->buildColumnDefinition($property, $colInstance, $idAttr?->newInstance());
 
             if (!array_key_exists($targetDbColumn, $dbColumns)) {
-                $queries[] = "ALTER TABLE `$tableName` ADD COLUMN $definition;";
+                $queries[] = $this->getDialect()->buildAddColumnQuery($tableName, $definition);
                 $claimedDbColumns[] = strtolower($currentColName);
             } else {
                 $claimedDbColumns[] = strtolower($targetDbColumn);
 
                 if ($targetDbColumn !== $currentColName) {
-                    $queries[] = "ALTER TABLE `$tableName` RENAME COLUMN `$targetDbColumn` TO `$currentColName`;";
+                    $queries[] = $this->getDialect()->buildRenameColumnQuery($tableName, $targetDbColumn, $currentColName);
                 }
 
                 if ($this->needsModification($dbColumns[$targetDbColumn], $property, $colInstance, (bool) $idAttr)) {
-                    $queries[] = "ALTER TABLE `$tableName` MODIFY COLUMN $definition;";
+                    $queries[] = $this->getDialect()->buildModifyColumnQuery($tableName, $definition);
                 }
             }
         }
@@ -159,7 +171,7 @@ class ModelBuilder
 
             if (!in_array(strtolower($dbColName), $claimedDbColumns)) {
                 $queries[] = "-- SAFETY WARNING: Potentially destructive action commented out.";
-                $queries[] = "-- ALTER TABLE `$tableName` DROP COLUMN `$dbColName`;";
+                $queries[] = "-- " . $this->getDialect()->buildDropColumnQuery($tableName, $dbColName);
             }
         }
 

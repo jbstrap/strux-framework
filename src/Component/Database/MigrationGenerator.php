@@ -152,7 +152,16 @@ class MigrationGenerator
         $tableName = $entityAttribute->newInstance()->table;
 
         try {
-            $stmt = $this->db->query("SHOW INDEX FROM `$tableName`");
+            $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+            $dialect = match ($driver) {
+                'mysql' => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+                'pgsql' => new \Strux\Component\Database\ORM\Dialect\PostgresDialect(),
+                'sqlite' => new \Strux\Component\Database\ORM\Dialect\SqliteDialect(),
+                'sqlsrv' => new \Strux\Component\Database\ORM\Dialect\SqlServerDialect(),
+                default => new \Strux\Component\Database\ORM\Dialect\MySqlDialect(),
+            };
+
+            $stmt = $this->db->query($dialect->buildShowIndexesQuery($tableName));
             $indexes = [];
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $indexes[] = $row['Key_name'];
